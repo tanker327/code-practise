@@ -1,0 +1,59 @@
+---
+title:
+  $ref: ./#/title
+layout: DetailComponent
+sidebar:
+  exclude: true
+data:
+  $ref: ./#/data
+---
+
+## Using the component
+
+### When to use
+
+- When a user needs the ability to choose one value from a set of five to 10 options.
+- When only the selected value from a set of options needs to be visible once the selection is made.
+
+### When not to use
+
+- When you have more than 10 options and users would benefit from filtering to narrow down the available options. Instead, use [`ComboBox`](../combo-box).
+- When you have fewer than five options and need to one option to be selected. Instead, use [`RadioButtonGroup`](../button).
+- When you have fewer than five options and multiple selections are required, or possible. Instead, use [`CheckboxGroup`](../checkbox).
+- If you have a Boolean selection, for instance “on” or “off”. Instead, use [`Switch`](../switch).
+- When you have large number (>100) of list items, to prevent performance issues without virtualization, we strongly recommend adding a filter e.g. use a [`ComboBox`](../combo-box) instead.
+
+_Note_: The list will adjust to the height of its container. If you need to modify the height, you can apply a global override to the `saltOptionList` class to add a maximum height. Keep in mind that this will impact all other lists contained in `ComboBox` and `Dropdown`.
+
+### Controlled/Uncontrolled
+
+Just like native input elements in React, dropdowns can be controlled or uncontrolled. By default a dropdown is uncontrolled. Use the `defaultSelected` prop to control the default value of the dropdown.
+
+If you want to control the value of the dropdown, use the `value` and `selected` props. The `onSelectionChange` prop is required when using the controlled approach.
+
+## Import
+
+To import `Dropdown` from the core Salt package, use:
+
+```js
+import { Dropdown, Option, OptionGroup } from "@salt-ds/core";
+```
+
+## Props
+
+### `Dropdown`
+
+<PropsTable packageName="core" componentName="Dropdown" />
+
+### `Option`
+
+<PropsTable packageName="core" componentName="Option" />
+
+### `OptionGroup`
+
+<PropsTable packageName="core" componentName="OptionGroup" />
+
+## References
+
+- Dropdown usability (https://baymard.com/blog/drop-down-usability)
+- Listboxes vs. Dropdown Lists, (https://www.nngroup.com/articles/listbox-dropdown/) NN Group, April 12, 2020

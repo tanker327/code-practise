@@ -1,0 +1,114 @@
+---
+title: Size
+layout: DetailTechnical
+sidebar:
+  priority: 3
+---
+
+Size refers to the restricted dimensions provided within the design system, such as an element's height and/or width.
+
+## Size tokens
+
+| Token                    | Dimension        | High Density (HD) | Medium Density (MD) | Low Density (LD) | Touch Density (TD) |
+| ------------------------ | ---------------- | ----------------- | ------------------- | ---------------- | ------------------ |
+| `--salt-size-base`       | Height           | 20px              | 28px                | 36px             | 44px               |
+| `--salt-size-selectable` | Height and width | 12px              | 14px                | 16px             | 18px               |
+| `--salt-size-icon`       | Height and width | 12px              | 12px                | 14px             | 16px               |
+| `--salt-size-adornment`  | Height and width | 6px               | 8px                 | 10px             | 12px               |
+| `--salt-size-bar`        | Height or width  | 2px               | 4px                 | 6px              | 8px                |
+| `--salt-size-indicator`  | Height or width  | 1px               | 2px                 | 3px              | 4px                |
+| `--salt-size-border`     | Height or width  | 1px               | 1px                 | 1px              | 1px                |
+
+## Base
+
+`salt-size-base` is the fixed default height for base components in each [density](./density) within the design system. It ensures the consistent alignment of components in horizontal layouts, as well as the vertical alignments of the text values within them. This means the text within each component sits on the same baseline.
+
+<ImageSwitcher
+  images={[
+    { src: "/img/foundations/size-base.svg", alt: "" },
+    { src: "/img/foundations/size-base-annotated.svg", alt: "" },
+  ]}
+  label="Show sizes"
+/>
+
+### Nesting size-base
+
+Using size-base, in conjunction with a [spacing token](./spacing) above and below, creates a consistent height for components that can nest a `--salt-size-base` component within them. This provides further standardized heights across the design system.
+
+The following example shows how components can use `--salt-size-base` and `--salt-spacing-50` (top and bottom) to define the height of a component or stackable element, such as a Data Grid row. The height allows a size-base component to be contained within it, but it is not dependent on the component to force the height.
+
+<ImageSwitcher
+  images={[
+    { src: "/img/foundations/size-base-spacing-50.svg", alt: "" },
+    { src: "/img/foundations/size-base-spacing-50-annotated.svg", alt: "" },
+  ]}
+  label="Show sizes"
+/>
+
+## Selectable
+
+`--salt-size-selectable` is used to set the dimensions of selectable components, including [Radio Button](../components/radio-button), [Checkbox](../components/checkbox), and Switch.
+
+<ImageSwitcher
+  images={[
+    { src: "/img/foundations/size-selectable.svg", alt: "" },
+    { src: "/img/foundations/size-selectable-annotated.svg", alt: "" },
+  ]}
+  label="Show sizes"
+/>
+
+## Icon
+
+`--salt-size-icon` controls the size of all icons throughout the design system. Icons are designed to be displayed no smaller than 12px x 12px; therefore this is set as a minimum measurement within the token's values.
+
+You can find out more about icons in the [iconography foundation](./iconography).
+
+<ImageSwitcher
+  images={[
+    { src: "/img/foundations/size-icon.svg", alt: "" },
+    { src: "/img/foundations/size-icon-annotated.svg", alt: "" },
+  ]}
+  label="Show sizes"
+/>
+
+## Adornment
+
+The purpose of `--salt-size-adornment` is to set the size of a discrete element within an editable field or cell intended to indicate a state, such as an error or warning.
+
+<ImageSwitcher
+  images={[
+    { src: "/img/foundations/size-adornment.svg", alt: "" },
+    { src: "/img/foundations/size-adornment-annotated.svg", alt: "" },
+  ]}
+  label="Show sizes"
+/>
+
+## Bar
+
+Bar is used to control the thickness of an accent bar, either in vertical or horizontal orientations.
+
+<ImageSwitcher
+  images={[
+    { src: "/img/foundations/size-bar.svg", alt: "" },
+    { src: "/img/foundations/size-bar-annotated.svg", alt: "" },
+  ]}
+  label="Show sizes"
+/>
+
+## Indicator
+
+`--salt-size-indicator` controls the thickness of an indicator, like on Tabs or Navigation Item.
+
+## Border
+
+Unlike other sizes, `--salt-size-border` is a fixed dimension regardless of density. It controls the size of all borders and separators across the design system.
+
+<ImageSwitcher
+  images={[
+    { src: "/img/foundations/size-border.svg", alt: "" },
+    { src: "/img/foundations/size-border-annotated.svg", alt: "" },
+  ]}
+  label="Show sizes"
+/>
+
+:fragment{src="./fragments/feedback.mdx"}

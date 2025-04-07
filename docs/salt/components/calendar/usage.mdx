@@ -1,0 +1,84 @@
+---
+title:
+  $ref: ./#/title
+layout: DetailComponent
+sidebar:
+  exclude: true
+data:
+  $ref: ./#/data
+---
+
+## Using the component
+
+## Compose a standard Calendar
+
+To use the `Calendar` component, compose it with the provided children.
+
+- `CalendarNavigation` - provides year/month dropdowns and forward/back controls for the visible month.
+- `CalendarWeekHeader` - provides a header for `CalendarGrid` indicating the day of the week.
+- `CalendarGrid` - provides a grid of buttons that represent the days from a calendar month.
+
+<LivePreview componentName="calendar" exampleName="Single" />
+
+## Compose a custom Calendar
+
+Alternatively, you can compose it with your own calendar controls or add additional content.
+
+<LivePreview componentName="calendar" exampleName="TodayButton" />
+
+### When to use
+
+Use the `Calendar` component when you need a versatile date selection tool that supports single, range, multiselect, or offset dates. This flexibility makes it ideal for financial applications, event scheduling, project timelines, and other scenarios where different date selection modes are necessary.
+
+### When not to use
+
+- For tasks other than selecting a date, such as picking a time or displaying event information.
+- If the date or range is pre-determined and cannot be specified by the user. In such cases, consider showing date options in a dropdown instead.
+
+## Import
+
+### Calendar
+
+To import `Calendar` from the Salt lab package, use:
+
+```js
+import { Calendar } from "@salt-ds/lab";
+```
+
+### CalendarNavigation
+
+To import `CalendarNavigation` from the Salt lab package, use:
+
+```js
+import { CalendarNavigation } from "@salt-ds/lab";
+```
+
+### CalendarWeekHeader
+
+To import `CalendarWeekHeader` from the Salt lab package, use:
+
+```js
+import { CalendarWeekHeader } from "@salt-ds/lab";
+```
+
+### CalendarGrid
+
+To import `CalendarGrid` from the Salt lab package, use:
+
+```js
+import { CalendarGrid } from "@salt-ds/lab";
+```
+
+## Props
+
+### Calendar
+
+<PropsTable packageName="lab" componentName="Calendar" />
+
+### CalendarWeekHeader
+
+<PropsTable packageName="lab" componentName="CalendarWeekHeader" />
+
+### CalendarGrid
+
+<PropsTable packageName="lab" componentName="CalendarGrid" />

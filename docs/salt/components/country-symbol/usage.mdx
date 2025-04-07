@@ -1,0 +1,49 @@
+---
+title:
+  $ref: ./#/title
+layout: DetailComponent
+sidebar:
+  exclude: true
+data:
+  $ref: ./#/data
+---
+
+## Using the components
+
+To reduce the core package's bundle size, country symbols are in a separate package that you should first install using:
+
+`npm install @salt-ds/countries` or `yarn add @salt-ds/countries`
+
+### When to use
+
+When you need to display an icon that represents the flag of a country or intergovernmental organization.
+
+## Import
+
+To import an individual country symbol from the `countries` Salt package, use its country code:
+
+```
+import { AD, GB_ENG } from "@salt-ds/countries";
+```
+
+To import `LazyCountrySymbol` from the `countries` Salt package, use:
+
+```
+import { LazyCountrySymbol } from "@salt-ds/countries";
+```
+
+To import a "sharp" variant from the `countries` Salt package, append `_Sharp` to the desired country code:
+
+```
+import { AD_Sharp, GB_ENG_Sharp } from "@salt-ds/countries";
+```
+
+## Props
+
+### `CountrySymbol`
+
+<PropsTable packageName="countries" componentName="CountrySymbol" />
+
+### `LazyCountrySymbol`
+
+<PropsTable packageName="countries" componentName="LazyCountrySymbol" />

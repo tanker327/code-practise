@@ -1,0 +1,31 @@
+---
+title:
+  $ref: ./#/title
+layout: DetailComponent
+sidebar:
+  exclude: true
+data:
+  $ref: ./#/data
+---
+
+## Keyboard interactions
+
+<KeyboardControls>
+<KeyboardControl keyOrCombos="Tab">
+
+- If focus is on the previous element in the tab order, Tab moves focus to the switch.
+- If focus is on switch, Tab moves focus to the next focusable element in the tab order.
+
+</KeyboardControl>
+<KeyboardControl keyOrCombos="Space">
+
+- Space activates switch to change between checked and unchecked state.
+
+</KeyboardControl>
+<KeyboardControl keyOrCombos="Shift + Tab">
+
+- If focus is on the switch, this action moves focus out of the component and sets the focus to the previous component in the tab order.
+- If focus is below the switch, this action moves focus to the switch.
+
+</KeyboardControl>
+</KeyboardControls>

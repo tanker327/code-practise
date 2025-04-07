@@ -1,0 +1,153 @@
+---
+title:
+  $ref: ./#/title
+layout: DetailComponent
+sidebar:
+  exclude: true
+data:
+  $ref: ./#/data
+---
+
+## Default (single-select)
+
+Users can select a single item from the dropdown options.
+
+`Dropdown` contains a button that opens a list on mouse or keyboard interaction.
+
+### Best practices
+
+You can wrap `Dropdown` in a `FormField` when it’s displayed within a form context. This provides functionality built into `FormField` for increased accessibility. For more information, refer to the [`FormField`](../form-field) guidance.
+
+<LivePreview componentName="dropdown" exampleName="Default" />
+
+## Multi-select
+
+When `multiSelect={true}`, users can select multiple items from the dropdown options.
+
+<LivePreview componentName="dropdown" exampleName="Multiselect" />
+
+## Custom Value
+
+The `value` prop can be used to control the value of the dropdown. This is useful to show a different message when multiple options are selected.
+
+<LivePreview componentName="dropdown" exampleName="CustomValue" />
+
+## Placeholder
+
+You can use a placeholder to prompt user input if no default value is provided.
+
+### Best practices
+
+Never use placeholder text to provide the user with contextual help. It will be removed when the user starts typing and it does not meet minimum contrast requirements. Doing so is a WCAG failure.
+
+Instead, use [`FormFieldHelperText`](/salt/components/form-field/examples#helper-text) beneath the field to provide instructions or directions which are necessary to complete the field, and reserve the placeholder text to support the help message, or provide an example of the suggested content.
+
+More information can be found [in the W3C form instructions](https://www.w3.org/WAI/tutorials/forms/instructions/).
+
+<LivePreview componentName="dropdown" exampleName="Placeholder" />
+
+## Variants
+
+The component has two variants: `primary` and `secondary`. The primary variant is set by default. Set to secondary with `variant=”secondary”`.
+
+The choice between primary and secondary variants should be considered alongside the background color it sits upon.
+
+Tip: The [forms pattern](/salt/patterns/forms) provides further guidance on primary versus secondary control selection. `Dropdown` can be wrapped in a `FormField` when it’s displayed within a Form context. This provides functionality built into `FormField` for increased accessibility. For more information, refer to the [`FormField`](../form-field) guidance.
+
+<LivePreview componentName="dropdown" exampleName="Variants" />
+
+## Disabled
+
+You can disable the dropdown if required, for instance if the access to the options needs to be restricted based on the current context.
+
+Unlike read-only, the disabled state can change for the current user depending on context. Showing it in a disabled state allows the user to be aware of the presence of the control, without enabling access to its functionality temporarily.
+
+When `disabled={true}`, user will not be able to interact with dropdown. It does not receive focus on any interaction.
+
+<LivePreview componentName="dropdown" exampleName="Disabled" />
+
+## Read-only
+
+Set the dropdown to read-only to allow values to be displayed that are predefined and not editable, for instance when a user does not have the appropriate permissions to select an option within the dropdown.
+
+When `readOnly={true}` users will not be able to interact with dropdown apart from focusing on it.
+Use to indicate that the pre-selected value is valid but changes are not permitted.
+
+**Note:** Screen reader support for read-only dropdowns is limited. You can work around this by adding visual or non-visual labels.
+
+<LivePreview componentName="dropdown" exampleName="Readonly" />
+
+## Disabled option
+
+Use the `disabled` prop on the `Option` component to disable an option. Disabled options are not selectable and are visually distinct from selectable options.
+
+<LivePreview componentName="dropdown" exampleName="DisabledOption" />
+
+## `FormField` support
+
+Wrap `Dropdown` in a [`FormField`](/salt/components/form-field) to make it accessible within a form. This will provide the dropdown with a visible label, help text and a status message for validation feedback. More information can be found [in the W3C form instructions](https://www.w3.org/WAI/tutorials/forms/instructions/).
+
+<LivePreview componentName="dropdown" exampleName="WithFormField" />
+
+## Grouped options
+
+Wrap options in a `OptionGroup` component to group them together. Use the `label` prop to provide a label for the group.
+
+<LivePreview componentName="dropdown" exampleName="Grouped" />
+
+## Complex options
+
+Static content can be supplied as children to the `Option` component. This can be used to visually assist users, for example rendering the flag icons next to the name of countries or to provide descriptions for additional context as seen in this example.
+_Note_: The `valueToString` prop is needed here because the `value` prop is different to the displayed option text.
+
+### Best practices
+
+- Users can benefit from seeing a particular visual with list items. Customize the display as you see fit. For example, if displaying a list of contacts, it may help to provide headshots alongside the option text.
+- Place any visual support such as icons, country symbols or avatars to the left of the option text.
+
+<LivePreview componentName="dropdown" exampleName="ComplexOptions" />
+
+## Validation
+
+Dropdown can show validation states (warning, success, error) with the prop `validationStatus`.
+
+### Best practices
+
+- Use the error state to alert the user of a critical issue that’s related to the input. This issue, which may jeopardize completion of the task, usually requires action from the user to resolve the error.
+- Display the warning state when you need to alert the user of a potential issue—that won’t prevent the user from continuing with the task, but may cause errors if it’s not addressed.
+
+<LivePreview componentName="dropdown" exampleName="Validation" />
+
+## Start adornment
+
+You can add custom adornments at the beginning of the Dropdown using the `startAdornment` prop.
+
+Start adornments are typically used to describe the purpose of the field (e.g., a location dropdown, or a currency dropdown).
+
+<LivePreview componentName="dropdown" exampleName="StartAdornment" />
+
+## Object values
+
+In order to support advanced use-cases, like where the options are fetched from a server. The `value` prop passed to `Option` can be an object.
+When the `value` prop is an object, the `valueToString` prop must be provided to `ComboBox` to specify how to display the option in the button.
+
+<LivePreview componentName="dropdown" exampleName="ObjectValues" />
+
+## Select All
+
+In some use-cases it can be useful to offer select all functionality, to achieve this add "Select All" as an option and use `Dropdown`'s controlled API.
+
+### Best practices
+
+- Select All is beneficial in situations where users handle extensive data sets or need to execute bulk actions involving the selection of multiple items at once.
+- Select All ensures users can easily manage their selections and enhances the overall user experience by reducing the number of required clicks and providing an easy reversal option if selections are made accidentally.
+
+<LivePreview componentName="dropdown" exampleName="SelectAll" />
+
+## Bordered
+
+To style `Dropdown` with a full border, set `bordered={true}`.
+
+We recommend this styling when the field uses the same fill color as the background (i.e., a primary fill color on a primary background).
+
+<LivePreview componentName="dropdown" exampleName="Bordered" />

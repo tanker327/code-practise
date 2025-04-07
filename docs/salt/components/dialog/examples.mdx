@@ -1,0 +1,127 @@
+---
+title:
+  $ref: ./#/title
+layout: DetailComponent
+sidebar:
+  exclude: true
+data:
+  $ref: ./#/data
+---
+
+## Default
+
+The dialog displays with a header, content area, and action bar. The component is modal, meaning it prevents interaction with the rest of the UI while open and must be addressed by clicking one of the action buttons or dismissing with the close button in `DialogHeader`. If the content of the dialog extends beyond the end of the screen, the `DialogContent` area will become scrollable.
+
+<LivePreview componentName="dialog" exampleName="Default" />
+
+## Sizes
+
+`Dialog` has 3 sizes: `small`, `medium` and `large`. The size you should choose depends on the amount of content you have. The widths of all three dialog sizes are responsive to the Salt breakpoints. This ensures the dialog remains entirely visible in the viewport and its size is optimized for the viewport size (e.g., dialogs appear larger within smaller viewports for ease of visibility).
+
+Choose the appropriate dialog size for the scenario.
+
+### Best practices
+
+Dialog sizes are typically used for different scenarios:
+
+- Small dialogs are used for simple alerts, quick selections or confirmations that require either no or quick action from the user.
+- Medium dialogs contain additional components or layouts such as grouped preferences that require increased user input.
+- Large dialogs usually contain more complex layouts and can display a series of tasks to complete, such as a form within a wizard.
+
+### Size table (width)
+
+| **Viewport size** | **Breakpoint (px)** | **Small (%)** | **Medium (%)** | **Large (%)** |
+| ----------------- | ------------------- | ------------- | -------------- | ------------- |
+| Extra small       | 0-599               | 100%          | 100%           | 100%          |
+| Small             | 600-959             | 56%           | 84%            | 96%           |
+| Medium            | 960-1279            | 36%           | 68%            | 84%           |
+| Large             | 1280-1919           | 24%           | 48%            | 72%           |
+| Extra large       | >1920               | 24%           | 48%            | 72%           |
+
+### Size table (height)
+
+| **Viewport size** | **Breakpoint (px)** | **Small (%)** | **Medium (%)** | **Large (%)** |
+| ----------------- | ------------------- | ------------- | -------------- | ------------- |
+| All sizes         | All breakpoints     | 48%           | 72%            | 84%           |
+
+<LivePreview componentName="dialog" exampleName="Sizes" />
+
+## Accent
+
+For default dialogs, you can pass the `accent` prop to `DialogHeader` which accepts a boolean to render an accent bar in the header of the dialog. You cannot render the accent bar when a status is also being rendered.
+
+<LivePreview componentName="dialog" exampleName="WithoutAccent" />
+
+## Header
+
+`DialogHeader` follows our standardized header for container components and app regions, and it can be added to provide a structured header for dialog. The header includes a title and actions that follows our [Header Block pattern](/salt/patterns/header-block).
+
+<LivePreview componentName="dialog" exampleName="WithHeader" />
+
+## Preheader
+
+You can use the optional `preheader` prop to render a preheader above the main header of your dialog
+
+<LivePreview componentName="dialog" exampleName="Preheader" />
+
+## Info
+
+Use the info status when you need to display general information.
+
+An info icon displays alongside a header and supporting message.
+
+Don’t use the info dialog when the information concerns an issue. Instead, use the error or warning dialog.
+
+Don’t use the info dialog when the information concerns a successful action. Instead, use the success dialog.
+
+<LivePreview componentName="dialog" exampleName="Info" />
+
+## Error
+
+Use the error status to communicate a critical issue that prevents the user from continuing or completing it.
+
+An error icon displays alongside a header and supporting message.
+
+Don’t use the error dialog when the issue does not prevent the user from completing their task. Instead, use the warning dialog.
+
+<LivePreview componentName="dialog" exampleName="Error" />
+
+## Warning
+
+Use the warning status to inform users of an issue or potential issue related to their current task. Use this for issues that does not prevent the user from continuing or completing their task.
+
+A warning icon displays alongside a header and supporting message.
+
+Don’t use the warning dialog when the issue prevents the user from completing their task. Instead, use the error dialog.
+
+<LivePreview componentName="dialog" exampleName="Warning" />
+
+## Success
+
+Use the success status to confirm that a user's action has been completed successfully.
+
+A success icon displays alongside a header and supporting message.
+
+<LivePreview componentName="dialog" exampleName="Success" />
+
+## Mandatory action
+
+Use the `disableDismiss` prop to prevent a click away dismissing the dialog.
+
+This forces a user to action something within the dialog.
+
+<LivePreview componentName="dialog" exampleName="MandatoryAction" />
+
+## Disable scrim
+
+Use the `disableScrim` prop to prevent the scrim from rendering.
+
+<LivePreview componentName="dialog" exampleName="DisableScrim" />
+
+## Deprecated Close button
+
+You can also render the `DialogCloseButton` as a child of the `Dialog` component to render a close button in the top right corner of the dialog. You can pass the `onClick` prop like with any `Button` component to handle the close button click.
+
+**Note:** `DialogCloseButton` is deprecated. Use the prop `actions` within `DialogHeader` instead.
+
+<LivePreview componentName="dialog" exampleName="CloseButton" />

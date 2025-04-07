@@ -1,0 +1,48 @@
+---
+title:
+  $ref: ./#/title
+layout: DetailComponent
+sidebar:
+  exclude: true
+data:
+  $ref: ./#/data
+---
+
+## Using the component
+
+Drawers cover the entire height of the viewport and are always modal. This means that the content behind them is inert and can't be interacted with. A [`Scrim`](../scrim) is used to visually obscure the content behind the drawer.
+
+Always set a logical width suitable for the content inside the drawer. Refer to Salt's [Forms](/salt/patterns/forms) pattern for information on logical forms width, and the [typography foundation](/salt/foundations/typography) for guidance on paragraph text width.
+
+### When to use
+
+- To reveal additional functionality or information contextual to on-screen content which the user can close when not required.
+- To display additional relevant functionality or information, such as a form or sidebar navigation, in a specific area of the screen.
+- To allow the user to show and hide additional relevant content.
+
+### When not to use
+
+- To provide an inlaid drawer that opens in-line with content. Instead, use [`BorderLayout`](../border-layout).
+- To provide a docked drawer that's fixed in the application layout and always visible. Instead, use [`Panel`](../panel) with styles to expand and collapse a non-modal surface.
+
+## Import
+
+To import `Drawer` and related components from the core Salt package, use:
+
+```js
+import { Drawer, DrawerCloseButton } from "@salt-ds/core";
+```
+
+## Props
+
+### `Drawer`
+
+<PropsTable packageName="core" componentName="Drawer" />
+
+### `DrawerCloseButton`
+
+<PropsTable packageName="core" componentName="DrawerCloseButton" />
+
+## References
+
+- [Dialog (Modal) Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)

@@ -1,0 +1,17 @@
+---
+title:
+  $ref: ./#/title
+layout: DetailComponent
+sidebar:
+  exclude: true
+data:
+  $ref: ./#/data
+---
+
+## Best practices
+
+Improve accessibility by customizing the `aria-label` prop to provide additional context about what is loading. For example:
+
+```jsx
+<LinearProgress aria-label="loading settings panel 0%" />
+```

@@ -1,0 +1,59 @@
+---
+title:
+  $ref: ./#/title
+layout: DetailComponent
+sidebar:
+  exclude: true
+data:
+  $ref: ./#/data
+---
+
+## Using the component
+
+### When to use
+
+- To display and select from a list of 10 or more options that don't need to be permanently visible to the user without selecting from a dropdown menu.
+- When only the selected value from a set of options needs to be visible once the selection is made.
+- If a workflow benefits from having a filter to quickly narrow down the available options.
+- If there are more than 100 options and you would like to prevent performance issues without virtualization.
+
+### When not to use
+
+- To choose one value from a set of five to ten options that does not require filtering. Instead, use [`Dropdown`](../dropdown).
+- To select a single option from fewer than five. Instead, use [`RadioButtonGroup`](../radio-button).
+- To select multiple options from fewer than five. Instead, use [`CheckboxGroup`](../checkbox).
+- To make an instantaneous selection between two binary choices, for example “on” and “off”. Instead, use [`Switch`](../switch).
+
+_Note_: The list will adjust to the height of its container. If you need to modify the height, you can apply a global override to the `saltOptionList` class to add a maximum height. Keep in mind that this will impact all other lists contained in `ComboBox` and `Dropdown`.
+
+### Controlled/Uncontrolled
+
+Just like native input elements in React, a combo box can be controlled or uncontrolled. By default a combo box is uncontrolled. Use the `defaultValue` and `defaultSelected` props to control the default value of the combo box.
+
+If you want to control the value of the combo box, use the `value` and `selected` props. The `onSelectionChange` prop is required when using the controlled approach.
+
+## Import
+
+To import `ComboBox` from the core Salt package, use:
+
+```js
+import { ComboBox, Option, OptionGroup } from "@salt-ds/core";
+```
+
+## Props
+
+### `ComboBox`
+
+<PropsTable packageName="core" componentName="ComboBox" />
+
+### `Option`
+
+<PropsTable packageName="core" componentName="Option" />
+
+### `OptionGroup`
+
+<PropsTable packageName="core" componentName="OptionGroup" />
+
+## References
+
+- Combo Box pattern (https://www.w3.org/WAI/ARIA/apg/patterns/combobox/) W3C

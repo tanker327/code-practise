@@ -1,0 +1,18 @@
+/* Add styles for the footer */
+.app-footer {
+    margin-top: 40px;
+    padding: 20px;
+    border-top: 1px solid #eee;
+    text-align: center;
+    color: #555;
+}
+
+.app-footer h2 {
+    font-size: 1.2em;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.app-footer p {
+    margin: 5px 0;
+}

@@ -1,0 +1,69 @@
+---
+title:
+  $ref: ./#/title
+layout: DetailComponent
+sidebar:
+  exclude: true
+data:
+  $ref: ./#/data
+---
+
+## Using the components
+
+### When to use
+
+- Use tabs to organize logically related but mutually exclusive content on a single page.
+- Use tabs to prevent users from navigating to another page to complete a task.
+
+### When not to use
+
+- Don’t use tabs when users need to compare information between views.
+- Don’t use tabs to communicate progress. Instead, use [`Stepped Tracker`](/salt/components/stepped-tracker).
+- Don’t use tabs for primary navigation, taking the user off the current page. Instead, use [`Navigation Item`](/salt/components/navigation-item).
+
+## Content
+
+- All labels should be short and concise.
+- Labels should clearly communicate the underlying view.
+- Always use sentence case in labels.
+- Always use sentence case for badge labels when nesting in a tab.
+- Do not wrap labels. Use truncation with `Tooltip` if necessary.
+- Icon and text should match each other semantically.
+
+## Import
+
+To import `TabsNext` and related components from the lab Salt package, use:
+
+```js
+import {
+  TabsNext,
+  TabBar,
+  TabListNext,
+  TabNext,
+  TabNextTrigger,
+  TabNextAction,
+  TabPanelNext,
+} from "@salt-ds/lab";
+```
+
+## Props
+
+### `TabsNext`
+
+<PropsTable packageName="lab" componentName="TabsNext" />
+
+### `TabBar`
+
+<PropsTable packageName="lab" componentName="TabBar" />
+
+### `TabListNext`
+
+<PropsTable packageName="lab" componentName="TabListNext" />
+
+### `TabNext`
+
+<PropsTable packageName="lab" componentName="TabNext" />
+
+### `TabNextAction`
+
+<PropsTable packageName="lab" componentName="TabNextAction" />

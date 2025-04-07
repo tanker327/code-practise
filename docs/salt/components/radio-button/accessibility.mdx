@@ -1,0 +1,30 @@
+---
+title:
+  $ref: ./#/title
+layout: DetailComponent
+sidebar:
+  exclude: true
+data:
+  $ref: ./#/data
+---
+
+## Keyboard interactions
+
+<KeyboardControls>
+<KeyboardControl keyOrCombos="Tab">
+
+- Tab moves focus to the checked radio button in the radio button group.
+- If the user hasn't checked a radio button, Tab moves focus to the first radio button in the group.
+
+</KeyboardControl>
+<KeyboardControl keyOrCombos="Space">
+
+- If the focused radio button isn't checked, Space changes the state to checked.
+
+</KeyboardControl>
+<KeyboardControl keyOrCombos="Up arrow / Down arrow / Left arrow / Right arrow">
+
+- This action moves focus between the available radio button options, and simultaneously selects an option.
+
+</KeyboardControl>
+</KeyboardControls>

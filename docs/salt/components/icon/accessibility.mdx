@@ -1,0 +1,13 @@
+---
+title:
+  $ref: ./#/title
+layout: DetailComponent
+sidebar:
+  exclude: true
+data:
+  $ref: ./#/data
+---
+
+## Best practices
+
+Exclude decorative icons (icons that repeat the information already expressed by the accompanied text) from screen reader access to avoid repetition. If you're adding an icon for decorative purposes, pass `aria-hidden=”true”` to exclude its label from the screen reader.

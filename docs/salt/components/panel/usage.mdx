@@ -1,0 +1,31 @@
+---
+title:
+  $ref: ./#/title
+layout: DetailComponent
+sidebar:
+  exclude: true
+data:
+  $ref: ./#/data
+---
+
+## Using the component
+
+Pick the background that reflects the level of importance of the content (primary or secondary), which will drive the types of components displayed in the panel.
+
+### When to use
+
+- To organize and divide the application into clear content areas.
+- To create visual hierarchy within the application layout.
+- With the [`BorderLayout`](/salt/components/border-layout/) component to define the main content regions of your application with responsive behavior.
+
+## Import
+
+To import `Panel` from the core Salt package, use:
+
+```js
+import { Panel } from "@salt-ds/core";
+```
+
+## Props
+
+<PropsTable componentName="Panel" />

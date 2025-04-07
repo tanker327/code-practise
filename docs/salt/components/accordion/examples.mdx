@@ -1,0 +1,79 @@
+---
+title:
+  $ref: ./#/title
+layout: DetailComponent
+sidebar:
+  exclude: true
+data:
+  $ref: ./#/data
+---
+
+## Default
+
+By default, `Accordion` is a single element the user can expand or collapse to show or hide content within a panel.
+
+<LivePreview componentName="accordion" exampleName="Default" />
+
+## Accordion group
+
+You can place accordions in an accordion group, which allows multiple accordions to be open at the same time.
+
+<LivePreview componentName="accordion" exampleName="Group" />
+
+## Exclusive group
+
+You can use `Accordion`'s controlled API to allow only one accordion to be expanded at a time.
+
+<LivePreview componentName="accordion" exampleName="ExclusiveGroup" />
+
+## Disabled
+
+Use the `disabled` prop to disable an accordion. The user can't expand, collapse or focus a disabled accordion.
+
+<LivePreview componentName="accordion" exampleName="Disabled" />
+
+## Indicator side
+
+Use the `indicatorSide` prop to customise which side the indicator is displayed in accordion header.
+
+The chevron indicator icon in the Accordion header can be displayed on the right-hand side by setting the `indicatorSide` prop to `right`.
+_Note that the content left aligns to the text in accordion header, so moving the indicator to the right side will also change the content's left padding._
+
+Positioning the indicator icon on the right side may be suitable if you are:
+
+- Using descriptive icons consistently next to accordion labels.
+- Building mobile experiences, where the chevron is often displayed within (right-hand) thumb reach.
+- Implementing a drag-and-drop reorder behaviour, and building a drag handle into the left side of each Accordion.
+
+The right position should be avoided:
+
+- In exceptionally wide accordions for accessibility to ensure the chevron is visible next to the label on browser zoom.
+- Where there is heavy use of form fields, to clearly distinguish the accordion from surrounding fields and clearly identify form sections.
+
+The indicator icon is positioned on the far right of the accordion. Additional elements, such as a secondary label or validation icons (error, warning, success), will be positioned between the accordion label and the chevron icon.
+
+<LivePreview componentName="accordion" exampleName="IndicatorSide" />
+
+## Status
+
+You can set a status of "error", "warning" or "success" for an accordion to indicate the type of content it contains.
+
+<LivePreview componentName="accordion" exampleName="Status" />
+
+## Inline badge
+
+You can use an inline [badge](../badge) to indicate a change, or several changes, to the content within the accordion.
+
+<LivePreview componentName="accordion" exampleName="InlineBadge" />
+
+## Additional labels
+
+You can add additional labels to provide extra context using the [`Text`](../text) and [`Stack Layout`](../stack-layout) components.
+
+<LivePreview componentName="accordion" exampleName="AdditionalLabels" />
+
+## Expand all
+
+You can use Accordion's controlled API to implement custom behaviour e.g. expand/collapse all.
+
+<LivePreview componentName="accordion" exampleName="ExpandAll" />

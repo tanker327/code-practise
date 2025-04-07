@@ -1,0 +1,52 @@
+---
+title:
+  $ref: ./#/title
+layout: DetailComponent
+sidebar:
+  exclude: true
+data:
+  $ref: ./#/data
+---
+
+## Basic icon
+
+You should individually import and use from the `@salt-ds/icons`
+package.
+
+<LivePreview componentName="icon" exampleName="BasicIcon" />
+
+## Icon size
+
+You can change the size of each icon using the `size` property, which acts as a multiplier for the base icon’s size, as described in the [iconography foundation](/salt/foundations/iconography). The base size of the icon depends on the active density as described in the [size foundation](/salt/foundations/size).
+
+<LivePreview componentName="icon" exampleName="IconSize" />
+
+## Icon types
+
+We provide two icon types: default and solid. Most icons will have both versions, with some exceptions as described in the [iconography foundation](/salt/foundations/iconography). The outline style is the default icon type. Use the solid icon for additional emphasis or to represent a toggled "on" state.
+
+<LivePreview componentName="icon" exampleName="IconTypes" />
+
+## Icon color
+
+To override the default color of the icon, use the `color` prop. This allows you to set the color to `primary`, `secondary` or `inherit`.
+
+<LivePreview componentName="icon" exampleName="IconColor" />
+
+## Custom icons
+
+If you need a custom SVG icon, use the `Icon` component. `Icon` has the same API as the native `<svg>` element. Whenever you add a custom icon, pass an `aria-label` to `Icon`.
+
+<LivePreview componentName="icon" exampleName="CustomIcon" />
+
+## Custom colors
+
+If you need to use a color other than "primary" or "secondary", use `color="inherit"` or use CSS to change the icon's `fill`.
+
+<LivePreview componentName="icon" exampleName="CustomColors" />
+
+### CSS background image
+
+You can also use icon as background image in CSS from `"@salt-ds/icons/saltIcons.css"`, then specify icon name prefixed with `saltIcons-`, e.g., `saltIcons-AddDocument`.
+
+<LivePreview componentName="icon" exampleName="CssBackgroundImage" />
