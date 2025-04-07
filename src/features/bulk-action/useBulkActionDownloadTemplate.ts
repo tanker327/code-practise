@@ -3,6 +3,7 @@
 import { useBulkActionProcessDownload } from './useBulkActionProcessDownload';
 import { useBulkActionStatusPolling } from './useBulkActionStatusPolling';
 import { useBulkActionDownloadFile } from './useBulkActionDownloadFile';
+import { BulkActionStatus } from './BulkActionSchema'; // Import BulkActionStatus
 
 // Define the params interface based on what's needed for process download
 interface BulkActionDownloadParams {
@@ -11,7 +12,7 @@ interface BulkActionDownloadParams {
 }
 
 // Define possible steps in the process
-type ProcessStep = 'process' | 'polling' | 'download' | 'complete' | 'idle';
+type ProcessStep = 'process' | 'polling' | 'download' | 'complete' | 'failed' | 'idle'; // Added 'failed'
 
 export const useBulkActionDownloadTemplate = (params: BulkActionDownloadParams) => {
   // Step 1: Process the download to get longId
@@ -21,41 +22,70 @@ export const useBulkActionDownloadTemplate = (params: BulkActionDownloadParams) 
   // Step 2: Poll for status until we get the download file key
   // Only enable when longId is available
   const statusPolling = useBulkActionStatusPolling(longId || '');
-  const downloadFileKey = statusPolling.data?.status === 'success' ? statusPolling.data.id : undefined;
+  const pollingResponseData = statusPolling.data?.data; // Access nested data
+  const isBackendSuccess = pollingResponseData?.status === BulkActionStatus.SUCCESS;
+  const isProcessFailed = pollingResponseData?.status === BulkActionStatus.FAILED; // Check for failed status
+  const downloadFileKey = isBackendSuccess ? pollingResponseData.bulkActionFileKey : undefined; // Access bulkActionFileKey
 
   // Step 3: Download the file using the key
-  // Only enable when download file key is available
-  const fileDownload = useBulkActionDownloadFile(downloadFileKey || '');
+  // Only enable when download file key is available and backend process succeeded
+  const fileDownload = useBulkActionDownloadFile(downloadFileKey || ''); // Remove second argument
 
   // Combine status information from all three steps
   const isPending = processDownload.isPending ||
-    (processDownload.isSuccess && statusPolling.isPending) ||
-    (processDownload.isSuccess && statusPolling.isSuccess && fileDownload.isPending);
+    (processDownload.isSuccess && statusPolling.isPending) || // Polling is pending
+    (processDownload.isSuccess && isBackendSuccess && fileDownload.isPending); // Download is pending
 
-  const isError = processDownload.isError ||
+  // Error includes query errors OR backend process failure
+  const isQueryError = processDownload.isError ||
     (processDownload.isSuccess && statusPolling.isError) ||
-    (processDownload.isSuccess && statusPolling.isSuccess && fileDownload.isError);
+    (processDownload.isSuccess && isBackendSuccess && fileDownload.isError); // Only check fileDownload error if backend was success
 
-  const rawError = processDownload.error || statusPolling.error || fileDownload.error;
+  const isError = isQueryError || isProcessFailed;
+
   // Extract a serializable error message
-  const errorMessage = rawError instanceof Error ? rawError.message : rawError ? String(rawError) : null;
+  const queryError = processDownload.error || statusPolling.error || fileDownload.error;
+  let extractedErrorMessage: string | null = null;
 
+  if (isProcessFailed && pollingResponseData) {
+    // Prioritize errorList for specific error details
+    if (pollingResponseData.errorList && pollingResponseData.errorList.length > 0) {
+      extractedErrorMessage = pollingResponseData.errorList.map(e => e.description || e.error).join('; ');
+    } else if (pollingResponseData.processingMessage) {
+      // Fallback to processingMessage
+      extractedErrorMessage = pollingResponseData.processingMessage;
+    }
+  }
+
+  // If no backend error message, use query error message
+  if (!extractedErrorMessage && queryError) {
+    extractedErrorMessage = queryError instanceof Error ? queryError.message : queryError ? String(queryError) : null;
+  }
+  const errorMessage = extractedErrorMessage;
+
+  // Success means all steps completed successfully, including backend process
   const isSuccess = processDownload.isSuccess &&
-    statusPolling.isSuccess &&
-    statusPolling.data?.status === 'success' &&
-    fileDownload.isSuccess;
+    statusPolling.isSuccess && // Polling query succeeded
+    isBackendSuccess &&        // Backend process reported success
+    fileDownload.isSuccess;    // File download query succeeded
 
   // Current step tracking
   const currentStep: ProcessStep = processDownload.isPending ? 'process' :
-    (processDownload.isSuccess && !downloadFileKey) ? 'polling' :
-      (downloadFileKey && !fileDownload.isSuccess) ? 'download' :
-        isSuccess ? 'complete' : 'idle';
+    isProcessFailed ? 'failed' : // Check for failed status first
+      (processDownload.isSuccess && statusPolling.isPending) ? 'polling' :
+        (processDownload.isSuccess && !isBackendSuccess && !isProcessFailed && !statusPolling.isError) ? 'polling' : // Still polling (not success, not failed, no query error)
+          (isBackendSuccess && downloadFileKey && fileDownload.isPending) ? 'download' :
+            (isBackendSuccess && downloadFileKey && !fileDownload.isSuccess && !fileDownload.isError) ? 'download' : // Still downloading (not success, no query error)
+              isSuccess ? 'complete' :
+                'idle'; // Default or initial state
+
 
   return {
     // Combined status
     isPending,
     isError,
     isSuccess,
+    isProcessFailed, // Expose backend failure state
     errorMessage,
     currentStep,
 
@@ -64,7 +94,7 @@ export const useBulkActionDownloadTemplate = (params: BulkActionDownloadParams) 
     statusPolling,
     fileDownload,
 
-    // Final data
-    data: fileDownload.data
+    // Final data (only relevant on success)
+    data: isSuccess ? fileDownload.data : undefined // Return data only on overall success
   };
 };

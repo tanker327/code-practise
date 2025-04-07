@@ -1,9 +1,14 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { mockSleep } from '../../app/new-bulk-uploader/mock-funs';
+import { mockSleep } from './mock-funs';
 
-const startBulkActionProcessDownload = async (params: any) => {
+// Define interface for parameters
+interface StartProcessParams {
+  id: string;
+}
+
+const startBulkActionProcessDownload = async (params: StartProcessParams) => {
   // TODO: Implement the logic to start the bulk action process download
   return mockSleep(params.id);
 }
@@ -14,6 +19,7 @@ export const useBulkActionProcessDownload = (id: string) => {
     // and automatic refetching when the id changes.
     queryKey: ['mockSleep', id],
     // The query function calls mockSleep with the provided id.
-    queryFn: () => startBulkActionProcessDownload(id),
+    // Pass an object { id: id } to match the expected params structure
+    queryFn: () => startBulkActionProcessDownload({ id: id }),
   });
 };

@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { mockSleep } from "../../app/new-bulk-uploader/mock-funs";
+import { mockSleep } from "./mock-funs";
 
 const downloadFile = async (downloadFileKey: string) => {
   // TODO: Implement the logic to download the file
