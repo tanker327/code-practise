@@ -2,7 +2,7 @@
 import { BulkActionResponseType, BulkActionStatus } from "./BulkActionSchema";
 import { mockStatusData } from "./mock-data";
 import { getActionStatus } from "./mock-funs";
-import { Query, useQuery } from "@tanstack/react-query";
+import { Query, useQuery, UseQueryResult } from "@tanstack/react-query";
 
 
 type BulkActionQueryKey = ['bulkActionStatus', string];
@@ -21,15 +21,16 @@ const checkBulkActionStatus = async (longId: string): Promise<BulkActionResponse
 }
 
 
-export const useBulkActionStatusPolling = (longId: string) => {
+export const useBulkActionStatusPolling = (longId: string): UseQueryResult<BulkActionResponseType, Error> => {
   return useQuery<BulkActionResponseType, Error, BulkActionResponseType, BulkActionQueryKey>({
     queryKey: ['bulkActionStatus', longId],
     queryFn: () => checkBulkActionStatus(longId),
     // Type the query parameter in the callback
     refetchInterval: (query: Query<BulkActionResponseType, Error, BulkActionResponseType, BulkActionQueryKey>) => {
       const responseData = query.state.data; // Renamed for clarity
+      const status = responseData?.data?.status;  
       // Stop polling if the status is 'Success' or "failed "
-      if (responseData?.data?.status === BulkActionStatus.SUCCESS || responseData?.data?.status === BulkActionStatus.FAILED) { // Updated check
+      if (status === BulkActionStatus.SUCCESS || status === BulkActionStatus.FAILED) { // Updated check
         return false;
       }
       // Otherwise, continue polling every 5 seconds

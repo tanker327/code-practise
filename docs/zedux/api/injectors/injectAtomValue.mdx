@@ -1,0 +1,126 @@
+---
+id: injectAtomValue
+title: injectAtomValue
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+```ts
+import { injectAtomValue } from '@zedux/react'
+```
+
+An [injector](../glossary#injector) that accepts an atom template and its params and registers a [dynamic graph dependency](../glossary#dynamic-graph-dependency) on the resolved atom instance. Returns the current value of the injected atom instance's store.
+
+The atom instance that uses this injector will reevaluate every time the resolved atom instance's state changes.
+
+This injector is essentially an alias for:
+
+```ts
+const { get } = injectAtomGetters()
+const value = get(otherAtom)
+```
+
+Except more restrictive since this is a normal injector while [`injectAtomGetters()`](injectAtomGetters) is [unrestricted](../glossary#unrestricted-injector) and [`get`](../types/AtomGetters#get) is not an injector at all.
+
+## Example
+
+```tsx live ecosystemId=injectAtomValue/example resultVar=Seconds
+const secondsAtom = atom('seconds', () => {
+  const store = injectStore(0)
+
+  injectEffect(() => {
+    const intervalId = setInterval(() => store.setState(val => val + 1), 1000)
+
+    return () => clearInterval(intervalId)
+  }, [])
+
+  return store
+})
+
+const timesFiveAtom = atom('timesFive', () => {
+  const seconds = injectAtomValue(secondsAtom)
+
+  return seconds * 5
+})
+
+function Seconds() {
+  const state = useAtomValue(timesFiveAtom)
+
+  return <div>Seconds Times Five: {state}</div>
+}
+```
+
+Miscellaneous:
+
+```ts
+const currentState = injectAtomValue(myAtom)
+
+const passingParams = injectAtomValue(myAtom, ['param 1', 'param 2'])
+
+// passing an atom instance registers a dynamic dependency on that instance
+const passingAnInstance = injectAtomValue(instance)
+```
+
+## Signature
+
+<Tabs>
+  {tab1(`injectAtomValue = (atom, params?) => state`)}
+  {tab2(`declare const injectAtomValue: {
+  <A extends AnyAtomTemplate>(
+    template: A,
+    params: AtomParamsType<A>
+  ): AtomStateType<A>\n
+  <A extends AnyAtomTemplate>(template: ParamlessTemplate<A>): AtomStateType<A>
+  <I extends AnyAtomInstance>(instance: I): AtomStateType<I>
+}`)}
+</Tabs>
+
+export const InjectAtomValueLegend = ({ name = 'injectAtomValue' }) => (
+  <Legend>
+    <Item name="atom">
+      <p>
+        Required. An <Link to="../classes/AtomTemplate">atom template</Link> or{' '}
+        <Link to="../classes/AtomInstance">atom instance</Link>.
+      </p>
+      <p>
+        If an atom template is passed, you must also pass any required params of
+        the atom.
+      </p>
+      <p>
+        If an atom instance is passed, the params are ignored. In this case,{' '}
+        <code>{name}()</code> returns the current value of the passed instance
+        (essentially <code>instance.getState()</code>).
+      </p>
+      <p>
+        In all cases, <code>{name}()</code> adds a dynamic dependency on the
+        resolved atom instance.
+      </p>
+    </Item>
+    <Item name="params">
+      <p>
+        Required if the passed atom template takes required params. Optional if
+        not.
+      </p>
+      <p>
+        Don't pass this or pass an empty array if the atom does not take params
+        or if passing an atom instance.
+      </p>
+    </Item>
+    <Item name="Returns">
+      <p>The current value of the resolved atom instance's store.</p>
+      <p>
+        Uses the passed atom template + params combo to find an existing atom
+        instance. If no instance is found, <code>{name}()</code> creates one
+        using the template and params and returns its initial value.
+      </p>
+    </Item>
+  </Legend>
+)
+
+<InjectAtomValueLegend />
+
+## See Also
+
+- [`useAtomValue()`](../hooks/useAtomValue)
+- [The `get` AtomGetter](../types/AtomGetters#get)
+- [`injectAtomState()`](injectAtomState)

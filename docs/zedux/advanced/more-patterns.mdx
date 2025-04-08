@@ -1,0 +1,257 @@
+---
+id: more-patterns
+title: More Patterns
+---
+
+## Circular Dependencies
+
+It is always possible to design an atom graph without any circular dependencies. That said, sometimes it can be very hard to do so - requirements change, the new guy comes in, or sometimes the state is just very complex.
+
+Zedux's atomic model can't support circular dependencies ... or can it?
+
+Alright, strictly speaking, direct circular dependencies are not allowed:
+
+```ts
+const atomA = atom('a', () => {
+  injectAtomValue(atomB)
+})
+
+const atomB = atom('b', () => {
+  injectAtomValue(atomA) // <- circular dep! This will always break everything
+})
+```
+
+But there are some workarounds. The basic idea for all of them is: Only make one dependency, e.g. `a -> b` (a depends on b). Load the other atom when needed, e.g. `get(atomA)` in a `b` callback or effect.
+
+```ts
+import {
+  api,
+  atom,
+  injectAtomGetters,
+  injectAtomInstance,
+  injectStore,
+} from '@zedux/react'
+
+const connectionAtom = atom('connection', () => {
+  const { getInstance } = injectAtomGetters()
+
+  // instead of registering a dependency on loginAtom like this:
+  // const { login } = getInstance(loginAtom).exports
+  // get the instance right when it's needed (inside an exported callback):
+  // highlight-next-line
+  const logout = () => getInstance(loginAtom).exports.reset()
+
+  const post = (url: string, data: any) =>
+    fetch(url, { body: JSON.stringify(data), method: 'POST' }).then(data =>
+      data.json()
+    )
+
+  return api().setExports({ logout, post })
+})
+
+const loginAtom = atom('login', () => {
+  // highlight-next-line
+  const { post } = injectAtomInstance(connectionAtom).exports
+  const store = injectStore({ email: '', password: '' })
+
+  const reset = () => store.setState({ email: '', password: '' })
+  const setEmail = (email: string) => store.setStateDeep({ email })
+  const setPassword = (password: string) => store.setStateDeep({ password })
+  const submit = () => post('/login', store.getState())
+
+  return api(store).setExports({ reset, setEmail, setPassword, submit })
+})
+```
+
+(Note that the better solution here is to move the `logout` function somewhere else - e.g. inside `loginAtom` - completely avoiding the circular dependency in the first place).
+
+Another possible solution is to pass a [partial instance](../api/injectors/injectSelf#partialatominstance) as a [param](../walkthrough/the-graph#instances-as-params) to the other atom (yes, a partial instance is supported just like a normal instance). This would work as long as the "child" atom doesn't register any kind of graph dependency on the received "parent" atom instance.
+
+:::info important
+You may be tempted to use manual graphing to create a real dependency asynchronously. This is not supported. Zedux's graph is acyclic, meaning circular dependencies break everything no matter how they're created. It is possible to change that, but we don't want to for performance reasons.
+:::
+
+## Atom Factories
+
+A common pattern is creating a helper function to create pre-configured atoms:
+
+```ts
+const mapAtom = <State extends Map<any, any>, Params extends any[]>(
+  key: string,
+  stateFactory: (
+    ...params: Params
+  ) => State | Store<State> | AnyAtomApi<{ State: State }>,
+  config?: AtomConfig<State>
+) => {
+  return atom(key, stateFactory, {
+    ...config,
+    dehydrate: map => Object.fromEntries(map.entries()),
+    hydrate: obj => new Map(Object.entries(obj)),
+  })
+}
+
+const exampleMapAtom = mapAtom('example', () => new Map())
+```
+
+Beyond simple config, this can be used to gain more control over types. For example, it isn't possible to change an atom instance's inferred state type based on params. Every instance of an atom is expected to have the same state type.
+
+While you can use a TypeScript union, and that works well enough, you can also use an atom factory to create completely different atom templates. Of course, this approach might require manual param serializing ([`atom.getInstanceId()`](../api/classes/AtomTemplate#getinstanceid) to the rescue!) and potentially lots of manual typing to create the properly-typed atoms. But it _could_ be worth it.
+
+## Atom Instance Factories
+
+Zedux creates atom instances dynamically whenever they're first used. This is very convenient but takes some control out of your hands. Pro Tip: You can use Atom Selectors to get that control back.
+
+Remember that Atom Selectors can return absolutely anything. Well, that means they can also return atom instances. Also remember that atoms can export anything. Well, that means they can also export something that indicates if the atom instance was just created or is missing some ref value or ... anything!
+
+```ts
+const formFieldAtom = atom('formField', (fieldName: string) => {
+  const store = injectStore('')
+  const isValidRef = injectRef()
+
+  return api(store).setExports({ isValidRef })
+})
+
+const getFormFieldInstance = (
+  { getInstance }: AtomGetters,
+  fieldName: string,
+  isValid: (val: string) => boolean
+) => {
+  const instance = getInstance(formFieldAtom, [fieldName])
+
+  // if the formField doesn't have its validator set yet, set it
+  if (!instance.exports.isValidRef) {
+    instance.exports.isValidRef.current = isValid
+  }
+
+  return instance
+}
+
+function Form() {
+  // now instead of `useAtomInstance(formFieldAtom, 'email')`, do:
+  const emailFieldInstance = useAtomSelector(
+    getFormFieldInstance,
+    'email',
+    isValidEmail
+  )
+
+  // and instead of `useAtomInstance(formFieldAtom, 'password')`, do:
+  const passwordFieldInstance = useAtomSelector(
+    getFormFieldInstance,
+    'password',
+    isValidPassword
+  )
+  ...
+}
+```
+
+(Note that this is a contrived example. There are certainly better ways to do per-field form validation).
+
+## Recursive Atoms
+
+Zedux doesn't directly have a concept of "recursive atoms" or "atoms-in-atoms". However, Zedux's APIs are so powerful that setting up recursive atoms is easy. Here's just one of many ways to go about it:
+
+```tsx live ecosystemId=more-patterns/recursive-atoms resultVar=App
+const idGeneratorAtom = atom('idGenerator', () =>
+  api().setExports({ idCounter: injectRef(0) })
+)
+
+const nodeAtom = atom('node', (id: number) => {
+  const idGenerator = injectAtomInstance(idGeneratorAtom)
+
+  const store = injectStore({
+    children: [],
+    id,
+  })
+
+  const addChild = () => {
+    store.setStateDeep(state => ({
+      children: [...state.children, idGenerator.exports.idCounter.current++],
+    }))
+  }
+
+  const removeChild = (targetId: number) => {
+    store.setStateDeep(state => ({
+      children: state.children.filter(childId => childId !== targetId),
+    }))
+  }
+
+  return api(store).setExports({ addChild, removeChild })
+})
+
+function Node({
+  id,
+  onDelete,
+}: {
+  id: number
+  onDelete?: (id: number) => void
+}) {
+  const [{ children }, { addChild, removeChild }] = useAtomState(nodeAtom, [id])
+
+  return (
+    <div>
+      <div>
+        Node Id: {id} {onDelete && <button onClick={onDelete}>Delete</button>}
+      </div>
+      <ul>
+        {children.map(id => (
+          <li key={id}>
+            <Node id={id} onDelete={() => removeChild(id)} />
+          </li>
+        ))}
+        <li>
+          <button onClick={addChild}>+ Add Child</button>
+        </li>
+      </ul>
+    </div>
+  )
+}
+
+function App() {
+  const idGenerator = useAtomInstance(idGeneratorAtom)
+  const rootId = useMemo(() => idGenerator.exports.idCounter.current++, [])
+
+  return <Node id={rootId} />
+}
+```
+
+## Params Are Constant
+
+Since Zedux creates a different atom instance if it detects different atom params, params are essentially constant; the params received by an atom instance can never change for the entire lifetime of that instance.
+
+This means you _can_ conditionally add/remove injectors based on params. We definitely don't recommend doing this, especially if you're new to Zedux. But we have found some situations where it's convenient.
+
+It also means that you don't need to pass params as deps to `injectMemo()`, `injectEffect()`, `injectCallback()`, `injectPromise()`, and similar injectors.
+
+```ts
+const requestAtom = atom('request', (endpoint: string) => {
+  let prefix = ''
+
+  if (!endpoint.startsWith('http')) {
+    prefix = injectAtomValue(protocolAtom) // technically fine
+  }
+
+  injectEffect(() => {
+    fetch(`${prefix}${endpoint}`).then(...)
+  }, [prefix]) // <- don't need to pass endpoint
+})
+```
+
+## Updating other atoms during evaluation
+
+There shouldn't be a need for this, but it is actually fine to update other atom instances during atom evaluation **if** this is not the first evaluation:
+
+```ts
+const rogueAtom = atom('rogue', () => {
+  const reasons = injectWhy()
+  const victimInstance = injectAtomInstance(victimAtom)
+
+  victimInstance.setState('sadness') // <- Bad! Don't do this
+
+  // use injectWhy to determine if this is the initial evaluation (reasons is
+  // empty if it is):
+  if (reasons.length) {
+    victimInstance.setState('mwahahaha') // <- fine... but still probably don't
+  }
+  ...
+})
+```

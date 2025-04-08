@@ -1,0 +1,179 @@
+---
+id: api
+title: api
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+```ts
+import { api } from '@zedux/react'
+```
+
+A factory for creating [AtomApis](../classes/AtomApi).
+
+## Examples
+
+Miscellaneous:
+
+```ts
+import { api } from '@zedux/react'
+
+const myApi = api()
+const withValue = api('some value')
+const withStore = api(injectStore())
+const withExports = api(val).setExports({ ...myExports })
+const withPromise = api(val).setPromise(myPromise)
+const cloningApis = api(myApi).addExports(withExports.exports)
+const addingExports = api(withExports).addExports({ ...moreExports })
+const overwritingExports = api(withExports).setExports({ ...newExports })
+const settingTtl = api().setTtl(0)
+const ttlPromise = api().setTtl(myPromise)
+const ttlObservable = api().setTtl(my$)
+
+// query atoms:
+return api(myPromise)
+```
+
+## Signature
+
+<Tabs>
+  {tab1(`api = (value?, wrap?) => atomApi`)}
+  {tab2(`declare const api: {
+  // Custom Stores (AtomApi cloning)
+  <
+    StoreType extends Store<any> = Store<any>,
+    Exports extends Record<string, any> = Record<string, never>,
+    PromiseType extends AtomApiPromise = undefined
+  >(
+    value: AtomApi<{
+      Exports: Exports
+      Promise: PromiseType
+      State: StoreStateType<StoreType>
+      Store: StoreType
+    }>
+  ): AtomApi<{
+    Exports: Exports
+    Promise: PromiseType
+    State: StoreStateType<StoreType>
+    Store: StoreType
+  }>\n
+  // Custom Stores (normal)
+  <StoreType extends Store<any> = Store<any>>(value: StoreType): AtomApi<{
+    Exports: Record<string, never>
+    Promise: undefined
+    State: StoreStateType<StoreType>
+    Store: StoreType
+  }>\n
+  // No Value
+  (): AtomApi<{
+    Exports: Record<string, never>
+    Promise: undefined
+    State: undefined
+    Store: undefined
+  }>\n
+  <
+    State = undefined,
+    Exports extends Record<string, any> = Record<string, never>,
+    PromiseType extends AtomApiPromise = undefined
+  >(): AtomApi<{
+    Exports: Exports
+    Promise: PromiseType
+    State: State
+    Store: undefined
+  }>\n
+  // No Store (AtomApi cloning)
+  <
+    State = undefined,
+    Exports extends Record<string, any> = Record<string, never>,
+    PromiseType extends AtomApiPromise = undefined
+  >(
+    value: AtomApi<{
+      Exports: Exports
+      Promise: PromiseType
+      State: State
+      Store: undefined
+    }>
+  ): AtomApi<{
+    Exports: Exports
+    Promise: PromiseType
+    State: State
+    Store: undefined
+  }>\n
+  // No Store (normal)
+  <State = undefined>(value: State): AtomApi<{
+    Exports: Record<string, never>
+    Promise: undefined
+    State: State
+    Store: undefined
+  }>\n
+  // Catch-all
+  <
+    State = undefined,
+    Exports extends Record<string, any> = Record<string, never>,
+    StoreType extends Store<State> = Store<State>,
+    PromiseType extends AtomApiPromise = undefined
+  >(
+    value:
+      | State
+      | StoreType
+      | AtomApi<{
+          Exports: Exports
+          Promise: PromiseType
+          State: State
+          Store: StoreType
+        }>
+  ): AtomApi<{
+    Exports: Exports
+    Promise: PromiseType
+    State: State
+    Store: StoreType
+  }>
+}`)}
+</Tabs>
+
+{<Legend>
+  <Item name="value">
+    <p>Optional. Can be absolutely anything.</p>
+    <p>
+      If a <Link to="../classes/Store">Zedux store</Link> is passed, it will be
+      set as the returned api's <code>.store</code> property. Otherwise,{' '}
+      <code>.store</code> will be undefined.
+    </p>
+    <p>
+      If a promise is passed and this api is returned from an atom state
+      factory, the atom will become a{' '}
+      <Link to="../../walkthrough/query-atoms">query atom</Link>.
+    </p>
+    <p>
+      If another Atom API is passed, <code>api()</code> clones it - returning a
+      new AtomApi instance with all the properties of the passed api copied over
+      (shallowly).
+    </p>
+  </Item>
+  <Item name="wrap">
+    <p>
+      Optional. A boolean. Default <code>true</code>.
+    </p>
+    <p>
+      Whether to automatically wrap all exported functions in{' '}
+      <Link to="../classes/Ecosystem#batch">
+        <code>ecosystem.batch()</code>
+      </Link>{' '}
+      calls.
+    </p>
+    <p>
+      Zedux wraps all exported functions by default. Pass <code>false</code> to
+      prevent this. This wrapping has some overhead, but is recommended to leave
+      enabled unless you know what you're doing. Forgetting to batch updates can
+      lead to state tearing in rare cases.
+    </p>
+  </Item>
+  <Item name="Returns">
+    An <Link to="../classes/AtomApi">AtomApi</Link> instance.
+  </Item>
+</Legend>}
+
+## See Also
+
+- [The Atom APIs walkthrough](../../walkthrough/atom-apis)
+- [The `AtomApi` class](../classes/AtomApi)

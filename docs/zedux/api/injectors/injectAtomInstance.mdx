@@ -1,0 +1,181 @@
+---
+id: injectAtomInstance
+title: injectAtomInstance
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+```ts
+import { injectAtomInstance } from '@zedux/react'
+```
+
+An [injector](../glossary#injector) that accepts an atom template and its params and registers a [static graph dependency](../glossary#static-graph-dependency) on the resolved atom instance. Returns the resolved [atom instance object](../classes/AtomInstance).
+
+Since the dependency is static, the atom instance that uses this injector will not reevaluate when the resolved atom instance's state changes. However, it will reevaluate when the atom instance's promise changes or when the atom instance is destroyed.
+
+You can also pass an atom instance directly to register a static graph dependency on instances received from other sources, e.g. an [atom instance param](../classes/AtomInstance#params).
+
+## Examples
+
+```tsx live ecosystemId=injectAtomInstance/example resultVar=Seconds
+const shouldCountAtom = atom('shouldCount', true)
+
+const secondsAtom = atom('seconds', () => {
+  const shouldCountInstance = injectAtomInstance(shouldCountAtom)
+  const store = injectStore(0)
+
+  injectEffect(() => {
+    const intervalId = setInterval(() => {
+      const shouldCount = shouldCountInstance.getState()
+      if (!shouldCount) return
+
+      store.setState(val => val + 1)
+    }, 1000)
+
+    return () => clearInterval(intervalId)
+  }, [shouldCountInstance]) // instances are technically unstable references
+
+  return store
+})
+
+function Seconds() {
+  const [shouldCount, setShouldCount] = useAtomState(shouldCountAtom)
+  const state = useAtomValue(secondsAtom)
+
+  return (
+    <>
+      <div>Seconds: {state}</div>
+      <button onClick={() => setShouldCount(val => !val)}>
+        {shouldCount ? 'Pause' : 'Resume'} Counter
+      </button>
+    </>
+  )
+}
+```
+
+Miscellaneous:
+
+```ts
+const instance = injectAtomInstance(myAtom)
+const withParams = injectAtomInstance(myAtom, ['param 1', 'param 2'])
+
+// passing an operation helps with debugging:
+const injectCustomStuff = () => {
+  const instance = injectAtomInstance(myAtom, [], 'injectCustomStuff')
+}
+```
+
+## Signature
+
+<Tabs>
+  {tab1(`injectAtomInstance = (atom, params?, operation?) => instance`)}
+  {tab2(`declare const injectAtomInstance: {
+  <A extends AnyAtomTemplate>(
+    template: A,
+    params: AtomParamsType<A>,
+    config?: InjectAtomInstanceConfig
+  ): AtomInstanceType<A>\n
+  <A extends AnyAtomTemplate>(
+    template: ParamlessTemplate<A>
+  ): AtomInstanceType<A>
+  <I extends AnyAtomInstance>(
+    instance: I,
+    params?: [],
+    config?: InjectAtomInstanceConfig
+  ): I
+}`)}
+</Tabs>
+
+export const InjectAtomInstanceLegend = ({
+  name = 'injectAtomInstance',
+  extraConfig = null,
+  extraConfigDef = '',
+}) => (
+  <Legend>
+    <Item name="atom">
+      <p>
+        Required. An <Link to="../classes/AtomTemplate">atom template</Link> or{' '}
+        <Link to="../classes/AtomInstance">atom instance</Link>.
+      </p>
+      <p>
+        If an atom template is passed, you must also pass any required params of
+        the atom.
+      </p>
+      <p>
+        If an atom instance is passed, the params are ignored. In this case,{' '}
+        <code>{name}()</code> returns the passed instance as-is.
+      </p>
+      <p>
+        In all cases, <code>{name}()</code> registers a static dependency on the
+        resolved instance.
+      </p>
+    </Item>
+    <Item name="params">
+      <p>
+        Required if the passed atom template takes required params. Optional if
+        not.
+      </p>
+      <p>
+        Don't pass this or pass an empty array if the atom does not take params
+        or if passing an atom instance.
+      </p>
+    </Item>
+    <Item name="config">
+      <p>Optional. An object containing the following optional properties:</p>
+      <Ts>{`{ operation, subscribe${extraConfigDef} }`}</Ts>
+      {<Legend>
+        <Item name="operation">
+          <p>
+            A string. Default <code>'{name}'</code>.
+          </p>
+          <p>
+            You usually won't need to worry about this. But passing an operation
+            string can help with debugging e.g. if the instance throws an error.
+          </p>
+        </Item>
+        <Item name="subscribe">
+          <p>
+            A boolean. Default <code>false</code>.
+          </p>
+          <p>
+            Whether to subscribe to state updates in the resolved atom instance,
+            triggering a{' '}
+            {name.startsWith('use')
+              ? 'rerender of the current component'
+              : 'reevaluation of the current atom instance'}{' '}
+            every time the resolved atom instance's state changes.
+          </p>
+          <p>
+            <code>{name}()</code> is "static" by default, meaning it won't
+            subscribe to updates.
+          </p>
+          <Ts>{`const val = ${name}(
+  myAtom,
+  [],
+  { subscribe: true }
+).getState()\n
+// the above is equivalent to:
+const val = ${name.startsWith('inject') ? 'inject' : 'use'
+            }AtomValue(myAtom)`}</Ts>
+        </Item>
+        {extraConfig}
+      </Legend>}
+    </Item>
+    <Item name="Returns">
+      <p>The resolved atom instance.</p>
+      <p>
+        Uses the passed atom template + params combo to find an existing atom
+        instance. If no instance is found, creates one using the template and
+        params and returns it.
+      </p>
+    </Item>
+  </Legend>
+)
+
+<InjectAtomInstanceLegend />
+
+## See Also
+
+- [The Atom Instances walkthrough](../../walkthrough/atom-instances)
+- [`useAtomInstance()`](../hooks/useAtomInstance)
+- [The `getInstance()` AtomGetter](../types/AtomGetters#getinstance)

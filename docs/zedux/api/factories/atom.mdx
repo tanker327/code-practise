@@ -1,0 +1,221 @@
+---
+id: atom
+title: atom
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+import { AtomKeyDesc } from '../classes/AtomTemplate.mdx'
+
+```ts
+import { atom } from '@zedux/react'
+```
+
+Where it all starts. `atom()` is a factory for creating atom templates. These templates are actually instances of [the AtomTemplate class](../classes/AtomTemplate). Atom templates are passed to many of Zedux's hooks and injectors. They tell Zedux how to create their atoms.
+
+## Example
+
+```tsx live ecosystemId=atom/example resultVar=App
+const simpleAtom = atom('simple', 'Hello, world!')
+
+const complexAtom = atom(
+  'complex',
+  () => {
+    const store = injectStore({ date: new Date() })
+
+    injectEffect(() => {
+      const intervalId = setInterval(
+        () => store.setState({ date: new Date() }),
+        1000
+      )
+
+      return () => clearInterval(intervalId)
+    }, [])
+
+    return store
+  },
+  {
+    flags: ['side-effect'],
+  }
+)
+
+function App() {
+  const simple = useAtomValue(simpleAtom)
+  const { date } = useAtomValue(complexAtom)
+
+  return (
+    <>
+      <div>simple state: {simple}</div>
+      <div>complex state: {date.toLocaleTimeString()}</div>
+    </>
+  )
+}
+```
+
+<Tabs>
+  {tab1(`atom = (key, valueOrFactory, config?) => newAtom`)}
+  {tab2(`declare const atom: {
+  // Query Atoms
+  <
+    State = any,
+    Params extends any[] = [],
+    Exports extends Record<string, any> = Record<string, never>
+  >(
+    key: string,
+    value: (...params: Params) => AtomApi<{
+      Exports: Exports
+      Promise: any
+      State: Promise<State>
+      Store: undefined
+    }>,
+    config?: AtomConfig<State>
+  ): AtomTemplate<{
+    State: PromiseState<State>
+    Params: Params
+    Exports: Exports
+    Store: Store<PromiseState<State>>
+    Promise: Promise<State>
+  }>\n
+  // Custom Stores
+  <
+    StoreType extends Store<any> = Store<any>,
+    Params extends any[] = [],
+    Exports extends Record<string, any> = Record<string, never>,
+    PromiseType extends AtomApiPromise = undefined
+  >(
+    key: string,
+    value: (...params: Params) =>
+      | StoreType
+      | AtomApi<{
+          Exports: Exports
+          Promise: PromiseType
+          State: StoreStateType<Store>
+          Store: StoreType
+        }>,
+    config?: AtomConfig<StoreStateType<StoreType>>
+  ): AtomTemplate<{
+    State: StoreStateType<StoreType>
+    Params: Params
+    Exports: Exports
+    Store: StoreType
+    Promise: PromiseType
+  }>\n
+  // Catch-all
+  <
+    State = any,
+    Params extends any[] = [],
+    Exports extends Record<string, any> = Record<string, never>,
+    StoreType extends Store<State> = Store<State>,
+    PromiseType extends AtomApiPromise = undefined
+  >(
+    key: string,
+    value: AtomValueOrFactory<{
+      Exports: Exports
+      Params: Params
+      Promise: PromiseType
+      State: State
+      Store: StoreType
+    }>,
+    config?: AtomConfig<State>
+  ): AtomTemplate<{
+    Exports: Exports
+    Params: Params
+    Promise: PromiseType
+    State: State
+    Store: StoreType
+  }>
+}`)}
+</Tabs>
+
+{<Legend>
+  <Item name="key">
+    <p>Required. A string.</p>
+    <p>
+      This key must be unique <b>except</b> when creating{' '}
+      <Link to="../../walkthrough/overrides">atom overrides</Link>.
+    </p>
+    <div>
+      <AtomKeyDesc />
+    </div>
+    <p>
+      It is possible for plugins to hook into the{' '}
+      <Link to="../classes/ZeduxPlugin#instancereused">
+        <code>instanceReused</code> mod
+      </Link>{' '}
+      and check for potentially problematic duplicate keys. Though HMR makes
+      that difficult.
+    </p>
+  </Item>
+  <Item name="valueOrFactory">
+    <p>Required. Can be any of the following:</p>
+    <ul className="spaced">
+      <li>
+        A raw value. When the atom is instantiated, Zedux will create a new
+        store with this value as its initial state.
+      </li>
+      <li>
+        A <Link to="../classes/Store">Zedux store</Link>. This will be the store
+        of this atom's instance - "instance" singular because such an atom will
+        naturally be a singleton (meaning it doesn't take params, since a state
+        factory function wasn't passed).
+      </li>
+      <li>
+        A state factory function that returns a raw value. Zedux will create a
+        new store with the returned value as its initial state.
+      </li>
+      <li>
+        A state factory function that returns a Zedux store. The returned store
+        will be the instance's <code>.store</code>.
+      </li>
+      <li>
+        <p>
+          A state factory function that returns an{' '}
+          <Link to="../classes/AtomApi">AtomApi</Link> instance.
+        </p>
+        <p>The Atom API's value can be any of the following:</p>
+        <div>
+          <ul>
+            <li>
+              A raw value. Zedux will create a new store with this value as its
+              initial state.
+            </li>
+            <li>
+              A Zedux store. This will be the instance's <code>.store</code>.
+            </li>
+            <li>
+              A promise. This will turn the atom into a{' '}
+              <Link to="../../walkthrough/query-atoms">query atom</Link>.
+            </li>
+          </ul>
+        </div>
+        <p>
+          The Atom API's exports will be set as the atom instance's{' '}
+          <code>.exports</code>.
+        </p>
+        <p>
+          The Atom API's promise will be set as the atom instance's{' '}
+          <code>.promise</code>.
+        </p>
+      </li>
+    </ul>
+  </Item>
+  <Item name="config">
+    <p>
+      Optional. An <Link to="../types/AtomConfig">AtomConfig</Link> object.
+    </p>
+  </Item>
+  <Item name="Returns">
+    <p>
+      An atom template. This template is actually an instance of the{' '}
+      <Link to="../classes/AtomTemplate">AtomTemplate</Link> class.
+    </p>
+    <p>
+      Zedux will manage creating and maintaining instances of the atom template
+      as you use it.
+    </p>
+  </Item>
+</Legend>}
+
+## See Also
+
+- [The Quick Start](../../walkthrough/quick-start)
+- [The Configuring Atoms walkthrough](../../walkthrough/configuring-atoms)

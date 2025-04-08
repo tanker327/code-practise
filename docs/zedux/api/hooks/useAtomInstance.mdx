@@ -1,0 +1,98 @@
+---
+id: useAtomInstance
+title: useAtomInstance
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+import { InjectAtomInstanceLegend } from '../injectors/injectAtomInstance.mdx'
+
+```ts
+import { useAtomInstance } from '@zedux/react'
+```
+
+A React hook that accepts an atom template and its params and registers a [static graph dependency](../glossary#static-graph-dependency) on the resolved atom instance. Returns the resolved [atom instance object](../classes/AtomInstance).
+
+Since the dependency is static, the component that uses this hook will not rerender when the resolved atom instance's state changes.
+
+To make the dependency dynamic, pass the returned atom instance to a dynamic hook like [`useAtomValue()`](useAtomValue), [`useAtomState()`](useAtomState), or [`useAtomSelector()`](useAtomSelector).
+
+You can also pass an atom instance directly to register a static graph dependency on instances received from other sources, e.g. from [`useAtomContext()`](useAtomContext). You typically won't need to do this.
+
+## Examples
+
+```tsx live ecosystemId=useAtomInstance/example resultVar=Seconds
+const secondsAtom = atom('seconds', () => {
+  const store = injectStore(0)
+
+  injectEffect(() => {
+    const intervalId = setInterval(() => store.setState(val => val + 1), 1000)
+
+    return () => clearInterval(intervalId)
+  }, [])
+
+  return store
+})
+
+function Seconds() {
+  const instance = useAtomInstance(secondsAtom) // create a static dependency
+  const state = useAtomValue(instance) // make the dependency dynamic
+
+  return <div>Seconds: {state}</div>
+}
+```
+
+Miscellaneous:
+
+```tsx
+const instance = useAtomInstance(myAtom)
+const withParams = useAtomInstance(myAtom, ['param 1', 'param 2'])
+
+// the instance can be provided over React context:
+<AtomProvider instance={instance}>
+  {children}
+</AtomProvider>
+```
+
+## Signature
+
+<Tabs>
+  {tab1(`useAtomInstance = (atomOrInstance, params?, config?) => atomInstance`)}
+  {tab2(`declare const useAtomInstance: {
+  <A extends AnyAtomTemplate>(
+    template: A,
+    params: AtomParamsType<A>,
+    config?: ZeduxHookConfig
+  ): AtomInstanceType<A>\n
+  <A extends AnyAtomTemplate>(
+    template: ParamlessTemplate<A>
+  ): AtomInstanceType<A>\n
+  <I extends AnyAtomInstance>(
+    instance: I,
+    params?: [],
+    config?: ZeduxHookConfig
+  ): I
+}`)}
+</Tabs>
+
+<InjectAtomInstanceLegend
+  name="useAtomInstance"
+  extraConfig={
+    <Item name="suspend">
+      <p>
+        A boolean. Default <code>true</code>.
+      </p>
+      <p>
+        Pass <code>false</code> to prevent React from throwing the resolved atom
+        instance's <Link to="../classes/AtomInstance#promise">promise</Link>,
+        triggering React suspense. Suspense is enabled by default.
+      </p>
+    </Item>
+  }
+  extraConfigDef={', suspend'}
+/>
+
+## See Also
+
+- [The Atom Instances walkthrough](../../walkthrough/atom-instances)
+- [`injectAtomInstance()`](../injectors/injectAtomInstance)
+- [The `getInstance()` AtomGetter](../types/AtomGetters#getinstance)

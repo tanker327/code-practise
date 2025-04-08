@@ -1,0 +1,284 @@
+---
+id: recoil-comparison
+title: Recoil Comparison
+---
+
+Zedux's atomic model was born in 2020 shortly after Recoil started gaining traction. We liked Recoil, but were turned away mostly by its complexity and (then-)unstable effects model. By borrowing ideas from React Query and React itself and by using Zedux's existing composable store model, we were able to create an atomic model that we've found more beginner-friendly and powerful.
+
+## Atom/Selector Families
+
+Recoil distinguishes between `atom`, `selector`, `atomFamily`, and `selectorFamily`. Zedux's [`atom`](../api/factories/atom) alone replaces all 4, though Zedux also provides [`ion`](../api/factories/ion) which is more commonly used to replace `selector`/`selectorFamily`.
+
+Recoil:
+
+```tsx
+const myNumberState = atom({
+  key: 'MyNumber',
+  default: 2,
+})
+
+const myMultipliedState = selectorFamily({
+  key: 'MyMultipliedNumber',
+  get:
+    multiplier =>
+    ({ get }) => {
+      return get(myNumberState) * multiplier
+    },
+})
+
+function MyComponent() {
+  const number = useRecoilValue(myNumberState)
+  const multipliedNumber = useRecoilValue(myMultipliedState(100))
+
+  return <div>...</div>
+}
+```
+
+Zedux:
+
+```tsx
+const myNumberState = atom('myNumber', 2)
+
+const myMultipliedState = ion(
+  'myMultipliedNumber',
+  ({ get }, multiplier: number) => {
+    return get(myNumberState) * multiplier
+  }
+)
+
+function MyComponent() {
+  const number = useAtomValue(myNumberState)
+  const multipliedNumber = useAtomValue(myMultipliedState, [100])
+
+  return <div>...</div>
+}
+```
+
+You can think of every atom as an "atom family" in Zedux. Params are used to create different atom instances ("family members"). Atoms that don't take params will be a "family" of size one (aka a singleton).
+
+Zedux relies on TypeScript to yell at you if you pass the wrong params or forget to pass them.
+
+```ts
+// using the above `myMultipliedState` ion, the following are all TS errors:
+useAtomValue(myMultipliedState) // no params
+useAtomValue(myMultipliedState, ['bad']) // string instead of number
+useAtomValue(myMultipliedState, [100, 'bad']) // wrong number of params
+```
+
+## Selectors
+
+Recoil selectors are a sort of more advanced atom-that-isn't-an-atom. Zedux selectors come in many flavors:
+
+- Any atom can inject any other atom
+- AtomSelectors are light-weight functions that hook into the atoms universe
+- Ions are an atom/AtomSelector hybrid
+
+Recoil:
+
+```tsx
+const filteredTodoListState = selector({
+  key: 'FilteredTodoList',
+  get: ({ get }) => {
+    const filter = get(todoListFilterState)
+    const list = get(todoListState)
+
+    switch (filter) {
+      case 'Show Completed':
+        return list.filter(item => item.isComplete)
+      case 'Show Uncompleted':
+        return list.filter(item => !item.isComplete)
+      default:
+        return list
+    }
+  },
+})
+```
+
+Zedux (using an AtomSelector):
+
+```tsx
+const getFilteredTodoList = ({ get }: AtomGetters) => {
+  const filter = get(todoListFilterAtom)
+  const list = get(todoListAtom)
+
+  switch (filter) {
+    case 'Show Completed':
+      return list.filter(item => item.isComplete)
+    case 'Show Uncompleted':
+      return list.filter(item => !item.isComplete)
+    default:
+      return list
+  }
+}
+```
+
+Zedux (using an ion):
+
+```tsx
+const filteredTodoListIon = ion('filteredTodoList', ({ get }) => {
+  const filter = get(todoListFilterAtom)
+  const list = get(todoListAtom)
+
+  switch (filter) {
+    case 'Show Completed':
+      return list.filter(item => item.isComplete)
+    case 'Show Uncompleted':
+      return list.filter(item => !item.isComplete)
+    default:
+      return list
+  }
+})
+```
+
+## Effects
+
+In Recoil, effects are isolated functions with special syntax for every basic operation.
+
+In Zedux, side effects are handled exactly as you'd handle them in React - using an exported callback if possible for optimal render-as-you-fetch concurrent mode goodness, or using `injectEffect` to predictably react to state updates.
+
+Recoil:
+
+```tsx
+const localStorageEffect =
+  key =>
+  ({ setSelf, onSet }) => {
+    const savedValue = localStorage.getItem(key)
+    if (savedValue != null) {
+      setSelf(JSON.parse(savedValue))
+    }
+
+    onSet(newValue => {
+      localStorage.setItem(key, JSON.stringify(newValue))
+    })
+  }
+
+const currentUserIDState = atom({
+  key: 'CurrentUserID',
+  default: 1,
+  effects: [localStorageEffect('current_user')],
+})
+```
+
+Zedux (using exported callbacks - recommended):
+
+```tsx
+const key = 'current_user'
+
+const currentUserIdAtom = atom('currentUserId', () => {
+  const savedValue = localStorage.getItem(key)
+  const store = injectStore(savedValue != null ? JSON.parse(savedValue) : 1)
+
+  const updateId = (newId: number) => {
+    localStorage.setItem(key, JSON.stringify(newId))
+    store.setState(newId)
+  }
+
+  return api(store).setExports({ updateId })
+})
+```
+
+Zedux (using `injectEffect`):
+
+```tsx
+const key = 'current_user'
+
+const currentUserIdAtom = atom('currentUserId', () => {
+  const savedValue = localStorage.getItem(key)
+  const store = injectStore(savedValue != null ? JSON.parse(savedValue) : 1)
+  const currentState = store.getState()
+
+  // injectEffect works just like React's useEffect!
+  injectEffect(() => {
+    localStorage.setItem(key, JSON.stringify(currentState))
+  }, [currentState])
+
+  return store
+})
+```
+
+## Bundle Size
+
+Despite having many extra features like state machines, the composable store model, ecosystems, and DI overrides, Zedux is actually significantly smaller than Recoil. Currently:
+
+- Recoil 76kb minified
+- Zedux 44kb minified
+
+Granted, we expect Zedux to grow a little and Recoil to shrink if it drops support for older React versions.
+
+## Synchronous Evaluation
+
+Recoil atoms handle promises implicitly. The goal is to make it so you "don't have to think about it", but in our experience that isn't the case. A big asynchronous graph can get very difficult to reason about and we found ourselves using the `waitForAll`/`waitForAllSettled`/`waitForNone`/`waitForAny` helpers more and more and wanting more advanced control e.g. using RxJS to buffer socket messages and flush on an interval.
+
+Zedux atoms always evaluate synchronously. While Zedux has several helpers for handling promises, state factories themselves can't be asynchronous. This means you always get the default value when using an atom that may be waiting for its data. That in turn means you may need to explicitly:
+
+- handle `null`/`undefined`/`isLoading` states until data comes in.
+- control asynchronous flows using `Promise.all`/`Promise.race` or any async helper library like RxJS.
+
+Zedux does have React suspense support, but does not make promises automatically cascade through the atom graph. You have to manually forward promises.
+
+This gives you full control at the cost of some boilerplate. You can "forward" promises however you want - you can even intercept them and use RxJS to control the async flow.
+
+No automatic promise cascading may seem like a step backward in the atomic paradigm. But this was a conscious decision we made after experimenting with Recoil's approach in our own state-intensive apps at Omnistac. Zedux's initial atom PoC used implicit suspense-like promise handling and we really didn't like it. Our key takeaways:
+
+- Explicit is good
+- Reinventing the async wheel is bad
+
+We keep mentioning RxJS. Here's an example using `injectEffect()` to manage an observable subscription. At Omnistac, this ability has been a game changer.
+
+```tsx
+const zeduxPlusRxEqualsLove = atom('❤️', () => {
+  // simple example accumulating all observable emissions into an array:
+  const store = injectStore([])
+  const myObservable$ = injectAtomValue(myObservableAtom)
+
+  // yes, you can even abstract this out to a custom `injectObservable` injector
+  injectEffect(() => {
+    const subscription = myObservable$.subscribe(val =>
+      store.setState(state => [...state, val])
+    )
+
+    return () => subscription.unsubscribe()
+  }, [myObservable$])
+
+  return store
+})
+```
+
+## Resetting State
+
+Recoil has a concept of resetting atoms. Zedux doesn't provide a "reset", but anything can be invalidated or force-destroyed (triggering recreation if needed). You can also fine-tune control over resets using exports or creating a dedicated `resetStreamAtom` that any atom can hook into to handle global reset events.
+
+Recoil:
+
+```tsx
+const todoListState = atom({
+  key: 'TodoList',
+  default: [],
+})
+
+const TodoResetButton = () => {
+  const resetList = useResetRecoilState(todoListState)
+
+  return <button onClick={resetList}>Reset</button>
+}
+```
+
+Zedux (using [`instance.invalidate()`](../api/classes/AtomInstance#invalidate) on an atom with no dependencies):
+
+```tsx
+const todoListAtom = atom('todoList', () => [])
+
+const TodoResetButton = () => {
+  const { invalidate } = useAtomInstance(todoListAtom)
+
+  return <button onClick={invalidate}>Reset</button>
+}
+```
+
+See more ways to reset state in Zedux in [the resets walkthrough](../walkthrough/resets).
+
+## Conclusion
+
+Most of these differences are honestly not that significant and come down to personal preference. Recoil's promise handling can be very cool if it works for you. The ability to attach exports to atoms in Zedux is very powerful. There are tons of little differences, but:
+
+Overall, we designed Zedux to handle _more_ use cases. Everything, in fact. If you're worried about Recoil becoming too restrictive as your app scales, Zedux might be a good fit for you.

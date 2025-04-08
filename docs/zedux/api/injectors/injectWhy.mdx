@@ -1,0 +1,131 @@
+---
+id: injectWhy
+title: injectWhy
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+```ts
+import { injectWhy } from '@zedux/react'
+```
+
+An [unrestricted injector](../glossary#unrestricted-injector) that returns a list of reasons explaining why the current atom instance is reevaluating. This injector returns an empty array on the first evaluation. On subsequent evaluations, it returns the full list of [EvaluationReasons](../types/EvaluationReason) detailing why this atom reevaluated.
+
+`injectWhy()` is essentially an alias for:
+
+```ts
+const { ecosystem } = injectAtomGetters()
+const reasons = ecosystem.why()
+```
+
+(Note that [`injectAtomGetters()`](injectAtomGetters) is also an unrestricted injector).
+
+Evaluation reasons can be nested indefinitely. They can tell you about a store state change many atoms deep in the dependency tree of this atom instance.
+
+## Deconstructing Batches
+
+When [batching](../../advanced/batching) updates, Zedux only reevaluates atoms once - after all batched updates are processed.
+
+When that evaluation happens, `injectWhy` can be used to get the list of intermediate state changes that ultimately resulted in this evaluation but that didn't individually cause separate evaluations.
+
+```tsx live ecosystemId=injectWhy/batch-observing resultVar=Reasons
+const reasonsAtom = atom('reasons', () => {
+  const store = injectStore(0)
+
+  const reasons = injectWhy()
+  const sawFive = reasons.some(reason => reason.newState === 5)
+
+  injectEffect(() => {
+    if (sawFive) alert('hah! I saw that 5 in there!')
+  }, [sawFive])
+
+  return store
+})
+
+function Reasons() {
+  const ecosystem = useEcosystem()
+  const [state, setState] = useAtomState(reasonsAtom)
+
+  return (
+    <>
+      <div>State: {state}</div>
+      <button
+        onClick={() => {
+          ecosystem.batch(() => {
+            setState(currentState => currentState + 1)
+            setState(currentState => currentState + 1)
+            setState(currentState => currentState + 1)
+          })
+        }}
+      >
+        Fire 3 Updates
+      </button>
+    </>
+  )
+}
+```
+
+## Examples
+
+Getting the list of reasons.
+
+```tsx live ecosystemId=injectWhy/simple-example resultVar=Reasons
+const reasonsAtom = atom('reasons', () => {
+  const store = injectStore(0)
+
+  injectEffect(() => {
+    const intervalId = setInterval(() => store.setState(val => val + 1), 1000)
+
+    return () => clearInterval(intervalId)
+  }, [])
+
+  const reasons = injectWhy()
+
+  return reasons
+})
+
+function Reasons() {
+  const reasons = useAtomValue(reasonsAtom)
+
+  return (
+    <>
+      <div>Last Evaluation Reasons:</div>
+      <pre>{JSON.stringify(reasons, null, 2)}</pre>
+    </>
+  )
+}
+```
+
+`injectWhy()` will return an empty array on the first evaluation. That's the only time. Thus `injectWhy` can be used to determine if this is the first evaluation.
+
+```ts
+const reasons = injectWhy()
+if (!reasons.length) {
+  // it's the first evaluation!
+}
+```
+
+## Signature
+
+<Tabs>
+  {tab1(`injectWhy = () => evaluationReasons`)}
+  {tab2(`declare const injectWhy: () => EvaluationReason<any>[]`)}
+</Tabs>
+
+{<Legend>
+  <Item name="Returns">
+    <p>
+      The list of <Link to="../types/EvaluationReason">EvaluationReasons</Link>{' '}
+      for this reevaluation.
+    </p>
+    <p>
+      Returns an empty array if this is the first time the current atom instance
+      is being evaluated.
+    </p>
+  </Item>
+</Legend>}
+
+## See Also
+
+- [`ecosystem.why()`](../classes/Ecosystem#why)
+- [The `EvaluationReason` type](../types/EvaluationReason)

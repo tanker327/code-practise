@@ -1,0 +1,759 @@
+---
+id: Ecosystem
+title: Ecosystem
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+The ecosystem is an isolated atom environment. Every ecosystem creates:
+
+- A scheduler for intelligently running atom-related tasks.
+- A graph that manages atom dependencies.
+- A [Selectors](Selectors) class instance for managing cached [Atom Selectors](../types/AtomSelector).
+- An id generator that generates unique ids for unnamed Atom Selectors and external graph nodes.
+
+The Ecosystem class itself defines many methods for creating, destroying, and inspecting atom instances and the graph they form.
+
+Ecosystems can be used completely outside of React. This can be helpful for testing atoms and selectors.
+
+## Creation
+
+Create ecosystems with [the `createEcosystem()` factory](../factories/createEcosystem).
+
+```ts
+import { createEcosystem } from '@zedux/react'
+
+const rootEcosystem = createEcosystem({ id: 'root' })
+```
+
+Ecosystems are also created automatically when using an [`<EcosystemProvider>`](../components/EcosystemProvider) without passing an `ecosystem` prop:
+
+```tsx
+import { EcosystemProvider } from '@zedux/react'
+
+function App() {
+  return (
+    <EcosystemProvider id="root">
+      <Routes />
+    </EcosystemProvider>
+  )
+}
+```
+
+Additionally, the [global ecosystem](../../walkthrough/ecosystems#global) will be created automatically if atoms are used in React outside any `<EcosystemProvider>`.
+
+## Providing
+
+Ecosystems can take control of all atom usages in a React component tree by wrapping the tree in [`<EcosystemProvider>`](../components/EcosystemProvider).
+
+```tsx
+function App() {
+  return (
+    <EcosystemProvider ecosystem={rootEcosystem}>
+      <Routes />
+    </EcosystemProvider>
+  )
+}
+```
+
+## Modifying Overrides
+
+The ability to swap out atom implementations on the fly is one of Zedux's superpowers. Use [`.addOverrides`](#addoverrides), [`.removeOverrides`](#removeoverrides), or [`.setOverrides`](#setoverrides).
+
+```tsx live ecosystemId=Ecosystem/modifying-overrides resultVar=Swapper
+const one = atom('common-key', () => 'Numero Uno')
+const two = atom('common-key', () => 'I am the best')
+const three = atom('common-key', () => 'Two is not the best')
+
+function Swapper() {
+  const ecosystem = useEcosystem()
+  const state = useAtomValue(one)
+
+  return (
+    <>
+      <div>Current State: {state}</div>
+      <button onClick={() => ecosystem.setOverrides([one])}>Use One</button>
+      <button onClick={() => ecosystem.setOverrides([two])}>Use Two</button>
+      <button onClick={() => ecosystem.setOverrides([three])}>Use Three</button>
+    </>
+  )
+}
+```
+
+## Properties
+
+All properties are readonly!
+
+{<Legend>
+  <Item name="atomDefaults">
+    <p>
+      An object. This is set to the <code>atomDefaults</code> value you passed
+      via{' '}
+      <Link to="../types/EcosystemConfig#atomdefaults">EcosystemConfig</Link>{' '}
+      when creating this ecosystem.
+    </p>
+    <p>
+      This object currently has a single optional property - <code>ttl</code>.
+      This will be used as the ttl for all atom instances in the ecosystem that
+      don't specify their own.
+    </p>
+    <p>
+      If not set, <code>atomDefaults.ttl</code> defaults to <code>-1</code>,
+      which means all atom instances in the ecosystem will live forever by
+      default.
+    </p>
+  </Item>
+  <Item name="complexParams">
+    <p>
+      A boolean. May be undefined. This is set to the <code>complexParams</code>{' '}
+      value you passed via{' '}
+      <Link to="../types/EcosystemConfig#complexparams">EcosystemConfig</Link>{' '}
+      when creating this ecosystem.
+    </p>
+    <p>
+      Whether to allow non-serializable values as atom and selector params. See{' '}
+      <Link to="../../advanced/complex-params">the complex params guide</Link>.
+    </p>
+  </Item>
+  <Item name="context">
+    <p>
+      An object. May be undefined. A reference to the `context` object passed to
+      <Link to="../factories/createEcosystem">the <code>createEcosystem()</code> factory</Link>
+      (if any) or the latest <Link to="#reset">
+        <code>.reset</code>
+      </Link> call. This object should be constant until the ecosystem is reset via
+      <code>.reset()</code>.
+    </p>
+    <p>
+      When <code>.reset()</code> is called, the previous context (if any) will
+      be passed as the second parameter to{' '}
+      <Link to="../types/EcosystemConfig#onready">
+        the <code>onReady</code> function
+      </Link>{' '}
+      as part of the reset.
+    </p>
+  </Item>
+  <Item name="destroyOnUnmount">
+    <p>
+      A boolean. May be undefined. This is set to the{' '}
+      <code>destroyOnUnmount</code> value you passed via{' '}
+      <Link to="../types/EcosystemConfig#destroyonunmount">
+        EcosystemConfig
+      </Link>{' '}
+      when creating this ecosystem.
+    </p>
+    <p>
+      This defaults to <code>false</code> for ecosystems created via{' '}
+      <Link to="../factories/createEcosystem">
+        <code>createEcosystem()</code>
+      </Link>{' '}
+      and to <code>true</code> for ecosystems automatically created when
+      rendering an <code>&lt;EcosystemProvider&gt;</code> without passing an{' '}
+      <code>ecosystem</code> prop.
+    </p>
+    <p>
+      Whether to destroy this ecosystem when the last{' '}
+      <Link to="../components/EcosystemProvider">
+        <code>&lt;EcosystemProvider&gt;</code>
+      </Link>{' '}
+      providing it unmounts.
+    </p>
+  </Item>
+  <Item name="id">
+    <p>
+      A string. The id of this ecosystem as set via{' '}
+      <Link to="../types/EcosystemConfig#id">EcosystemConfig</Link> when
+      creating this ecosystem. The string <code>'@@global'</code> is reserved
+      for the global ecosystem.
+    </p>
+    <p>
+      If you didn't specify an id when creating this ecosystem, this will be a
+      randomly-generated string.
+    </p>
+  </Item>
+  <Item name="flags">
+    <p>
+      An array of strings. This is set to the <code>flags</code> value you
+      passed via{' '}
+      <Link to="../types/EcosystemConfig#flags">EcosystemConfig</Link> when
+      creating this ecosystem.
+    </p>
+    <p>
+      These work in conjunction with{' '}
+      <Link to="AtomTemplate#flags">atom flags</Link> to raise warnings when
+      unsafe atom templates are not overridden in certain environments.
+    </p>
+    <p>
+      If an atom template is used that has a flag that is not present in this
+      array, Zedux will log a warning.
+    </p>
+    <p>
+      Flag checking is off by default - simply don't pass a flags array to{' '}
+      <code>createEcosystem()</code> and Zedux will ignore all flags. To turn it
+      on, but with no flags, pass an empty array.
+    </p>
+    <Ts>{`createEcosystem() // flag checking disabled. Zedux will ignore all atom flags.
+createEcosystem({ flags: [] }) // flag checking enabled! All flags will log warnings
+createEcosystem({ flags: ['a'] }) // all atom flags except 'a' will log warnings
+`}</Ts>
+    <p>
+      Which atoms, which flags, and which environments, is all up to you. You
+      may want to flag atoms that run side effects you don't want to run in
+      tests. Or you may want to flag atoms that use APIs that only work in the
+      browser or in electron or any other environment.
+    </p>
+  </Item>
+  <Item name="hydration">
+    <p>
+      An object. May be undefined. The shallowly merged result of all calls to{' '}
+      <code>ecosystem.hydrate()</code> minus any keys that have been consumed
+      already.
+    </p>
+  </Item>
+  <Item name="modBus">
+    <p>
+      A <Link to="Store">Zedux Store</Link>. This store has no state. It serves
+      only as a message bus for notifying plugins of mod events.
+    </p>
+    <p>
+      See <Link to="../../advanced/plugins">the plugins guide</Link>.
+    </p>
+  </Item>
+  <Item name="onReady">
+    <p>
+      A function. May be undefined. This is set to the <code>onReady</code>{' '}
+      value you passed via{' '}
+      <Link to="../types/EcosystemConfig#onready">EcosystemConfig</Link> when
+      creating this ecosystem.
+    </p>
+    <p>
+      Will be called as soon as the ecosystem has initialized. Is also called
+      every time the ecosystem is{' '}
+      <Link to="../classes/Ecosystem#reset">reset</Link>.
+    </p>
+    <p>
+      This is the ideal place to bootstrap data and preload atoms. Since this
+      function is called on reset, it can be used to ensure the ecosystem's
+      "necessary data" is always loaded.
+    </p>
+    <p>Signature:</p>
+    <Ts>{`(ecosystem, prevContext?) => maybeCleanup`}</Ts>
+    {<Legend>
+      <Item name="ecosystem">A reference to this ecosystem</Item>
+      <Item name="prevContext">
+        <p>
+          A reference to the previous context value of the ecosystem.{' '}
+          <code>ecosystem.reset()</code> can be optionally given a new context
+          object. If that happens, the ecosystem's context will be updated
+          before this function is called. So a reference to the old context is
+          passed here.
+        </p>
+        <p>
+          This parameter will be undefined the first time <code>onReady</code>{' '}
+          runs. Thus you can use this to check if this is the initial run.
+        </p>
+        <Ts>{`const ecosystem = createEcosystem({
+  context: { redux: reduxStore },
+  onReady: (ecosystem, prevContext) => {
+    if (!prevContext) {
+      // this is the initial run
+    } else {
+      // onReady is running after an ecosystem reset
+      const nextContext = ecosystem.context
+      
+      if (prevContext.redux !== nextContext.redux) {
+        // ecosystem.reset() changed the redux store reference
+      }
+    }
+  }
+})\n
+ecosystem.reset() // doesn't change context (prevContext === ecosystem.context)
+ecosystem.reset({ redux: otherReduxStore }) // replaces context`}</Ts>{' '}
+        <p>
+          Note that replacing context is an all-or-nothing deal. Spread{' '}
+          <code>ecosystem.context</code> into a new object to update only part
+          of the context:
+        </p>{' '}
+        <Ts>{`ecosystem.reset({ ...ecosystem.context, specialField: 'new val' })`}</Ts>
+      </Item>
+      <Item name="Returns">
+        Either <code>undefined</code> or a cleanup function that will be called
+        when the ecosystem is reset or destroyed.
+      </Item>
+    </Legend>}
+  </Item>
+  <Item name="overrides">
+    <p>
+      An object mapping atom keys to atom templates. These are the
+      currently-overridden atoms in this ecosystem. Modify this list by calling{' '}
+      <code>ecosystem.setOverrides()</code>,{' '}
+      <code>ecosystem.addOverrides()</code>, and{' '}
+      <code>ecosystem.removeOverrides()</code>.
+    </p>
+    <p>
+      If an initial <code>overrides</code> array is passed, they will be
+      immediately mapped into this object.
+    </p>
+  </Item>
+  <Item name="selectors">
+    <p>
+      The <Link to="Selectors">Selectors</Link> class instance that tracks all
+      cached atom selectors in this ecosystem.
+    </p>
+  </Item>
+  <Item name="ssr">
+    <p>
+      A boolean. Whether the ecosystem is being used on the server to generate
+      SSR content.{' '}
+    </p>
+    <p>
+      This is set to the <code>ssr</code> value you passed via{' '}
+      <Link to="../types/EcosystemConfig">EcosystemConfig</Link> when creating
+      this ecosystem. If not specified, defaults to false.
+    </p>
+    <p>
+      Currently the only thing this affects is <code>injectEffect()</code> - SSR
+      mode prevents effects from running at all in this ecosystem.
+    </p>
+  </Item>
+</Legend>}
+
+## Methods
+
+{<Legend>
+  <Item name="addOverrides">
+    <p>
+      Adds new overrides to the ecosystem's current list of overrides and/or
+      updates existing overrides - swapping them out with different
+      implementations. All existing instances that match atom templates in the
+      passed list will be force-destroyed, allowing their dependents to recreate
+      them.
+    </p>
+    <p>Signature:</p>
+    <Ts>{`addOverrides = (overrides) => void`}</Ts>
+    {<Legend>
+      <Item name="overrides">
+        Required. An array of <Link to="AtomTemplate">atom templates</Link>.
+      </Item>
+    </Legend>}
+  </Item>
+  <Item name="batch">
+    <p>
+      Accepts a callback and batches all updates that happen synchronously while
+      the callback is running. Flushes all updates once the passed callback
+      completes.
+    </p>
+    <p>Signature:</p>
+    <Ts>{`batch = (callback) => void`}</Ts>
+    <p>
+      See <Link to="../../advanced/batching">the batching guide</Link>.
+    </p>
+  </Item>
+  <Item name="dehydrate">
+    <p>
+      Returns a snapshot of the current state of instances in the ecosystem.
+    </p>
+    <p>Signature:</p>
+    <Ts>{`dehydrate = ({
+  exclude?,
+  excludeFlags?,
+  include?,
+  includeFlags?,
+  transform?
+}) => snapshot`}</Ts>
+    {<Legend>
+      <Item name="exclude">
+        <p>
+          Optional. An array of atom templates and/or case-insensitive
+          fuzzy-search strings.
+        </p>
+        <p>
+          Any atom instances of the passed atom templates or whose id matches
+          any of the passed strings will be excluded from the snapshot.
+        </p>
+      </Item>
+      <Item name="excludeFlags">
+        <p>Optional. An array of strings.</p>
+        <p>
+          Any atom instance whose template's{' '}
+          <Link to="AtomTemplate#flags">flags</Link> contain any of the passed
+          strings will be excluded from the snapshot.
+        </p>
+      </Item>
+      <Item name="include">
+        <p>
+          Optional. An array of atom templates and/or case-insensitive
+          fuzzy-search strings.
+        </p>
+        <p>
+          Only atom instances of the passed atom templates or whose ids match
+          any of the passed strings will be included in the snapshot.
+        </p>
+        <p>
+          Excludes take priority over includes - if an atom instance is excluded
+          via <code>excludes</code> or <code>excludeFlags</code> <i>and</i>{' '}
+          included here, it will still be excluded.
+        </p>
+      </Item>
+      <Item name="includeFlags">
+        <p>Optional. An array of strings.</p>
+        <p>
+          Only atom instance whose template's{' '}
+          <Link to="AtomTemplate#flags">flags</Link> contain any of the passed
+          strings will be included in the snapshot.
+        </p>
+        <p>
+          Excludes take priority over includes - if an atom instance is excluded
+          via <code>excludes</code> or <code>excludeFlags</code> <i>and</i>{' '}
+          included here, it will still be excluded.
+        </p>
+      </Item>
+      <Item name="transform">
+        <p>
+          Optional. A boolean. Default: <code>true</code>.
+        </p>
+        <p>
+          Whether to transform state by passing it to{' '}
+          <Link to="../types/AtomConfig#dehydrate">
+            <code>dehydrate</code> atom config options
+          </Link>
+          .
+        </p>
+      </Item>
+      <Item name="Returns">
+        <p>
+          An object mapping atom instance ids to the transformed form (unless{' '}
+          <code>transform: false</code>) of their current state.
+        </p>
+      </Item>
+    </Legend>}
+  </Item>
+  <Item name="destroy">
+    <p>
+      Destroys all atom instances in the ecosystem, cleans up the ecosystem
+      itself (e.g. by removing all currently scheduled tasks), and removes it
+      from the <Link to="../utils/internal-utils#store">internal store</Link>.
+    </p>
+    <p>Signature:</p>
+    <Ts>{`destroy = (force?) => void`}</Ts>
+    {<Legend>
+      <Item name="force">
+        <p>
+          Optional. A boolean. Default: <code>false</code>.
+        </p>
+        <p>
+          By default, destruction will bail out if this ecosystem is currently
+          being used in any{' '}
+          <Link to="../components/EcosystemProvider">
+            <code>&lt;EcosystemProvider&gt;s</code>
+          </Link>
+          . Pass true to force destruction anyway. It is not recommended to pass
+          this in a normal app.
+        </p>
+      </Item>
+    </Legend>}
+  </Item>
+  <Item name="find">
+    <p>
+      Works similar to{' '}
+      <Link to="#getinstance">
+        <code>ecosystem.getInstance()</code>
+      </Link>{' '}
+      except it does NOT create the atom instance if it doesn't exist. In that
+      case, <code>.find()</code> returns undefined.
+    </p>
+    <Ts>{`// creates the atom instance if needed:
+instance = ecosystem.getInstance(myAtom, [...params])\n
+// never creates an atom instance:
+instance = ecosystem.find(myAtom, [...params])`}</Ts>
+    <p>
+      <code>.find()</code> can also take a fuzzy search string:
+    </p>
+    <Ts>{`instance = ecosystem.find('myAtomKey')`}</Ts>
+    <p>
+      In this case, <code>.find()</code> returns the first atom instance it
+      finds whose id contains the passed string (case-insensitive), unless an
+      exact match is found, in which case the exact-matching instance will be
+      returned.
+    </p>
+  </Item>
+  <Item name="findAll">
+    <p>Get all atom instances in the ecosystem.</p>
+    <p>Signature:</p>
+    <Ts>{`findAll = (atom?) => instances`}</Ts>
+    {<Legend>
+      <Item name="atom">
+        An atom template or fuzzy search string. If an atom template is passed,{' '}
+        <code>.findAll()</code> returns only instances of the passed template.
+        If a string is passed, <code>.findAll()</code> returns only instances
+        whose id includes the passed string (case-insensitive).
+      </Item>
+      <Item name="Returns">
+        An object of all Active and Stale atom instances in the ecosystem, keyed
+        by the instance's id.
+      </Item>
+    </Legend>}
+  </Item>
+  <Item name="get">
+    <p>
+      Gets the current value of an atom instance's store. Creates the atom
+      instance if it doesn't exist yet. See{' '}
+      <Link to="../types/AtomGetters#get">
+        the <code>get</code> AtomGetter
+      </Link>
+      .
+    </p>
+    <Ts>{`const currentValue = myEcosystem.get(myAtom)
+const withParams = myEcosystem.get(paramsAtom, ['param 1', 'param 2'])`}</Ts>
+    <p>
+      Note that this method - like all AtomGetters on the ecosystem - never
+      registers graph dependencies, no matter where it's used.
+    </p>
+  </Item>
+  <Item name="getInstance">
+    <p>
+      Gets an atom instance. Creates it if it doesn't exist yet. Set{' '}
+      <Link to="../types/AtomGetters#getinstance">
+        the <code>getInstance</code> AtomGetter
+      </Link>
+      .
+    </p>
+    <Ts>{`const instance = rootEcosystem.getInstance(myAtom)
+const withParams = rootEcosystem.getInstance(paramsAtom, ['param 1', 'param 2'])\n
+instance.getState()
+instance.setState('new state')`}</Ts>
+    <p>
+      Note that this method - like all AtomGetters on the ecosystem - never
+      registers graph dependencies, no matter where it's used.
+    </p>
+  </Item>
+  <Item name="hydrate">
+    <p>
+      Hydrates the state of atom instances in this ecosystem, usually using a
+      previous state snapshot from{' '}
+      <Link to="#dehydrate">
+        <code>ecosystem.dehydrate()</code>
+      </Link>
+      .
+    </p>
+    <p>
+      If <code>.hydrate()</code> has been called before, the new hydration will
+      be shallowly merged into the existing hydration.
+    </p>
+    <p>Signature:</p>
+    <Ts>{`hydrate = (snapshot, config?) => void`}</Ts>
+    {<Legend>
+      <Item name="snapshot">
+        <p>
+          Required. An object. The keys of this object are ids corresponding to
+          atom instances that may or may not exist in the ecosystem yet.
+        </p>
+      </Item>
+      <Item name="config">
+        <p>Optional. An object containing the following optional property:</p>
+        <Ts>{`{ retroactive }`}</Ts>
+        <p>
+          By default, Zedux will update the state of all existing atom instances
+          that have an entry in the passed snapshot. To disable this, pass{' '}
+          <code>{`{ retroactive: false }`}</code>.
+        </p>
+      </Item>
+    </Legend>}
+  </Item>
+  <Item name="registerPlugin">
+    <p>
+      Registers a plugin with this ecosystem. Does nothing if the plugin has
+      already been registered. See{' '}
+      <Link to="../../advanced/plugins">the plugins guide</Link>.
+    </p>
+    <p>Signature:</p>
+    <Ts>{`registerPlugin = (plugin) => void`}</Ts>
+    <p>
+      Accepts a single <Link to="ZeduxPlugin">ZeduxPlugin</Link> instance.
+    </p>
+  </Item>
+  <Item name="removeOverrides">
+    <p>
+      Removes overrides previously set via <code>.addOverrides()</code> or{' '}
+      <code>.setOverrides()</code>. All existing instances of atom templates in
+      the passed list will be force-destroyed, allowing their dependents to
+      recreate them using the original, non-overridden atom template.
+    </p>
+    <p>
+      You can pass either the original template or the override. Zedux only
+      looks at their <code>key</code> properties. You can also pass strings
+      matching atom template keys.
+    </p>
+    <p>Signature:</p>
+    <Ts>{`removeOverrides = (overrides) => void`}</Ts>
+    {<Legend>
+      <Item name="overrides">
+        Required. An array of <Link to="AtomTemplate">atom templates</Link>{' '}
+        and/or template key strings. If any haven't been set as overrides
+        previously, they'll be ignored.
+      </Item>
+    </Legend>}
+  </Item>
+  <Item name="reset">
+    <p>
+      Wipes the ecosystem - force destroying all atom instances and cached
+      selectors - calls the cleanup function returned from{' '}
+      <Link to="../types/EcosystemConfig#onready">
+        the <code>onReady</code> function
+      </Link>{' '}
+      (if any), and calls <code>onReady</code> again to reinitialize the
+      ecosystem.
+    </p>
+    <p>
+      Note that this doesn't remove overrides or plugins but <i>does</i> remove
+      hydrations. This is because you can remove overrides/plugins yourself if
+      needed, but there isn't currently a way to remove hydrations.
+    </p>
+    <p>Signature:</p>
+    <Ts>{`reset = (newContext?) => void`}</Ts>
+    <p>
+      Takes an optional <code>newContext</code> object that will be passed to{' '}
+      <code>onReady</code> and set as the new{' '}
+      <Link to="#context">
+        <code>.context</code>
+      </Link>{' '}
+      value of the ecosystem.
+    </p>
+    <Ts>{`const myEcosystem = createEcosystem({
+  context: { someField: 'some val' },
+  id: 'my',
+  onReady: (ecosystem, prevContext) =>
+    console.log('old context:', prevContext, 'new context:', ecosystem.context),
+})
+// old context: undefined new context: { someField: 'some val' }\n
+myEcosystem.reset({ someField: 'new val' })
+// old context: { someField: 'some val' } new context: { someField: 'new val' }`}</Ts>
+  </Item>
+  <Item name="select">
+    <p>
+      Gets the current value of a cached atom selector. If the atom selector
+      hasn't been cached yet, runs the selector but does <i>not</i> cache the
+      result. Use{' '}
+      <Link to="Selectors#getcache">
+        <code>ecosystem.selectors.getCache()</code>
+      </Link>{' '}
+      to create and cache a selector. See{' '}
+      <Link to="../types/AtomGetters#select">
+        the <code>select</code> AtomGetter
+      </Link>
+      .
+    </p>
+    <Ts>{`const selection = myEcosystem.select(myAtomSelector)
+const withArgs = myEcosystem.select(myAtomSelector, 'param 1', 'param 2')`}</Ts>
+    <p>
+      Note that this method - like all AtomGetters on the ecosystem - never
+      registers graph dependencies, no matter where it's used.
+    </p>
+  </Item>
+  <Item name="setOverrides">
+    <p>
+      Replaces the ecosystem's list of overridden atoms with the passed
+      overrides. All instances of atom templates in either the new or old lists
+      will be force-destroyed, allowing their dependencies to recreate them.
+    </p>
+    <p>
+      To selectively update only certain atoms, use{' '}
+      <Link to="#addoverrides">
+        <code>.addOverrides</code>
+      </Link>{' '}
+      or{' '}
+      <Link to="#removeoverrides">
+        <code>.removeOverrides</code>
+      </Link>
+    </p>
+    <p>Signature:</p>
+    <Ts>{`setOverrides = (newOverrides) => void`}</Ts>
+    <p>
+      Accepts an array of atom templates. This will be set as the new{' '}
+      <Link to="#overrides">
+        <code>.overrides</code>
+      </Link>{' '}
+      property.
+    </p>
+  </Item>
+  <Item name="unregisterPlugin">
+    <p>
+      Removes a plugin from the ecosystem. Calls the cleanup returned from the
+      plugin's{' '}
+      <Link to="ZeduxPlugin#registerecosystem">
+        <code>registerEcosystem</code>
+      </Link>{' '}
+      function (if any), and turns off any mods the plugin enabled in the
+      ecosystem that are not also requested by any other plugins.
+    </p>
+    <p>Signature:</p>
+    <Ts>{`unregisterPlugin = (plugin) => void`}</Ts>
+    <p>
+      Accepts a single <Link to="ZeduxPlugin">ZeduxPlugin</Link> instance. If
+      the plugin hasn't previously been registered via{' '}
+      <Link to="#registerplugin">
+        <code>.registerPlugin()</code>
+      </Link>
+      , it will be ignored.
+    </p>
+  </Item>
+  <Item name="viewGraph">
+    <p>
+      See what the ecosystem's atom graph currently looks like. There are 3 ways
+      to view the graph:
+    </p>
+    <ul>
+      <li>Top-down</li>
+      <li>Bottom-up</li>
+      <li>Flat</li>
+    </ul>
+    <p>
+      Flat is the default and is the most useful. It returns a normalized object
+      containing every node in the graph. Each node points to its dependencies
+      and dependents in the top-level object.
+    </p>
+    <p>
+      Top-down and bottom-up are mostly just for fun, to quickly gain some
+      insight into what your dependency graph actually looks like. However,
+      these views don't show "pseudo-nodes" (nodes that Zedux creates to
+      represent external dependents like React components).
+    </p>
+    <p>Signature:</p>
+    <Ts>{`viewGraph = (view) => graph`}</Ts>
+    {<Legend>
+      <Item name="view">
+        Optional. One of <code>'flat'</code>, <code>'top-down'</code>, or{' '}
+        <code>'bottom-up'</code>. Default: <code>'flat'</code>.
+      </Item>
+      <Item name="Returns">
+        An object whose structure depends on the requested view. See{' '}
+        <Link to="../../walkthrough/the-graph#getting-the-graph">
+          the graph walkthrough
+        </Link>
+        .
+      </Item>
+    </Legend>}
+  </Item>
+  <Item name="why">
+    <p>
+      Returns a list of{' '}
+      <Link to="../types/EvaluationReason">EvaluationReasons</Link> detailing
+      why the current atom instance or selector is evaluating.
+    </p>
+    <p>
+      If called outside a selector or atom state factory,{' '}
+      <code>ecosystem.why()</code> always returns undefined.
+    </p>
+    <p>
+      If this is the first evaluation of the current atom instance or selector,{' '}
+      <code>ecosystem.why()</code> returns an empty array.
+    </p>
+  </Item>
+</Legend>}
+
+## See Also
+
+- [the Ecosystems walkthrough](../../walkthrough/ecosystems)
+- [the `createEcosystem()` factory](../factories/createEcosystem)
+- [the Overrides walkthrough](../../walkthrough/overrides)
+- [the Plugins guide](../../advanced/plugins)

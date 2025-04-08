@@ -1,0 +1,127 @@
+---
+id: introduction
+title: Introduction
+---
+
+A Molecular State Engine for React.
+
+Zedux is a multi-paradigm state management tool that features a powerful composable store model wrapped in a DI-driven atomic architecture.
+
+## Features
+
+- Atomic architecture
+- Composable stores
+- Standardized state primitives
+- Global state management
+- Local (aka component aka fractal) state management
+- High-level abstractions for React context
+- Dependency Injection
+- Cache management
+- Selectors
+- Zero-configuration
+- Flexible side effects
+- (coming soon:) Dev, debugging, and performance tools
+
+## Project Goals
+
+1. Flexibility.
+2. Depth.
+3. Simplicity.
+
+### Flexibility
+
+The core philosophy of Zedux. Atoms and stores are flexible, meaning they can adapt to every use case. Need more power? Build a reducer hierarchy. Need some simple, local state? Use zero config stores. Need something even simpler? Don't use stores at all!
+
+Apps of all sizes should be able to use Zedux comfortably. Zedux is designed to scale as your state management demands increase. Zero configuration can always be opted out of. All high-level APIs have low-level counterparts for when you need to dig in and do something crazy.
+
+### Depth
+
+Zedux is not just another "80%" little state management library that fills some niche and gets people excited for a while. It's a mature tool that yields greater returns the more you use it and spend time learning its features. Its extreme flexibility should allow it to handle every possible use case.
+
+That doesn't mean you can't use other tools in combination with Zedux. For example, XState can be used for more powerful state machines, and React Query can be used for more powerful promise handling.
+
+Knowledge gained from working with Zedux is transferrable. Zedux tries to stay close to other popular libraries in the space. The atomic APIs are similar to Recoil. The store APIs are similar to Redux. The cache management tools are similar to React Query. If one day you ditch Zedux forever, you should be able to easily jump into other libraries and feel familiar with the concepts.
+
+### Simplicity
+
+Zero configuration and high-level APIs are standard across all features. This is all you need to know to get started:
+
+```tsx
+const greetingAtom = atom('greeting', 'world')
+
+function Greeting() {
+  const [greeting, setGreeting] = useAtomState(greetingAtom)
+
+  return <div>Hello, {greeting}</div>
+}
+```
+
+## Standardized Primitives
+
+React has always lacked a standard API for interfacing with plugin state. You can get pretty far with props and hooks of course, at the cost of tightly coupling business logic to React components.
+
+The Redux community introduced the Ducks pattern as an attempt to standardize global state sharing. It worked, but Redux's infamous boilerplate made attaching a plugin's reducers and middleware cumbersome, especially when code splitting is involved.
+
+Zedux introduces three standard APIs for interfacing with 3rd-party state:
+
+- Composable stores. Zedux apps have many stores. Any module can simply expose one. The store can be composed together or simply subscribed to. Expose actions to dispatch to it and you're good to go.
+
+- Injectors. These work exactly like React hooks, but inside atoms. An injector can use Zedux's built-in injectors to create stores and manage their state, side effects, memoization details, and more.
+
+- Atom templates. Any module can expose an atom template that can be used to create fully configured atoms. Sky is the limit here.
+
+These are all perfectly modular, composable, and autonomous. They're immediately usable and boilerplate-free - if you know Zedux, you know how to use all of these with one line of code. They also "just work" with code splitting.
+
+## Do I Need Zedux?
+
+If you're using a combination of React Query, Zustand, Recoil, Jotai, and/or XState, and you haven't encountered any shortcomings with your setup, you probably don't need Zedux.
+
+In particular, Zedux doesn't fully replace React Query. It may someday, but for now it's possible to dual-wield Zedux + React Query just like many people do with Zustand + React Query.
+
+Humility aside, even with these amazing tools, Zedux might be able to make your setup even better.
+
+We accounted for many things with Zedux from the very beginning:
+
+- Minimal boilerplate. Zero config. Plug and play.
+
+- Scalable performance.
+
+- Granular control over selector evaluation, memoization details, and component rerenders.
+
+- Full control over state Time To Live and destruction.
+
+- Full control over when side effects run - especially good RxJS support.
+
+- Incrementally adoptable - we needed to dual-wield Redux and Zedux for a while before we finished migrating to Zedux.
+
+- Lazy-loading support - especially the ability to stream and cache data on-demand.
+
+- Conducive to micro frontend architectures (really, if your app uses code splitting, you may find Zedux is a joy to work with).
+
+- Able to take advantage of React context to control state in different component branches.
+
+- Testable. You can use Zedux completely outside React.
+
+- SSR-compatible.
+
+- Time travel debugging, including replayable actions and undo/redo.
+
+- Plugin compatible - there are many, many ways to extend Zedux's functionality - from extending its classes to creating custom injectors to creating a full-fledged ecosystem [plugin](../advanced/plugins).
+
+Zedux was designed to handle everything. There should be absolutely no app requirements that Zedux can't handle well. If smaller state management tools seem incomplete to you, Zedux may be a perfect fit for you.
+
+If your app is small and simple, a smaller state management library like Jotai and Zustand might be good enough for you. Zedux is also a great choice for small apps with one big bonus: Zedux is designed to scale very well. If your app gets bigger and more complex over time, Zedux will be able to elegantly manage all of those complexities as they come up.
+
+If you're using Redux and your selectors are causing performance problems or your decoupled side effects are getting hard to manage and synchronize, Zedux was designed for you. That's what we encountered at Omnistac and is the primary reason Zedux exists.
+
+Zedux was designed specifically to manage highly volatile state in Omnistac's bond trading platform. If your app has extreme state management demands, especially involving web sockets and RxJS, Zedux might be exactly what you're looking for.
+
+Zedux's community is very young. There are no community-made addons for it yet, but Zedux's [standardized primitives](#standardized-primitives) and extreme extensibility leave that door wide open. If you've been wanting to get involved in OSS and/or you want to help shape the community and tools of a powerful state management system, Zedux is a ripe opportunity.
+
+## I Have Bundlephobia
+
+The production build of the `@zedux/react` package currently weighs in at 33kb minified, 11kb minified + gzipped - very similar to other libraries in the space like Redux Toolkit and React Query. The package is also "tree-shakable" - most modern bundlers and minifiers will be able to remove unused APIs during dead-code elimination.
+
+## Next Steps
+
+The [walkthrough](../walkthrough/quick-start) is a great place to start learning Zedux. It offers a good balance of practical usage and depth to help you feel comfortable using Zedux.

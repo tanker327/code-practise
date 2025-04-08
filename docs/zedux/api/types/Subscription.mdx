@@ -1,0 +1,33 @@
+---
+id: Subscription
+title: Subscription
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+The object returned from [`Store#subscribe()`](../classes/Store#subscribe). This is an entire object instead of just a cleanup function like Redux. This matches the proposed observable spec.
+
+## Definition
+
+```ts
+interface Subscription {
+  unsubscribe(): void
+}
+```
+
+## Methods
+
+{<Legend>
+  <Item name="unsubscribe">
+    <p>
+      Removes the subscription. Can be called with no context - e.g. in FP
+      paradigms like:
+    </p>
+    <Ts>{`useEffect(() => myStore.subscribe(subscriber).unsubscribe, [myStore])`}</Ts>
+  </Item>
+</Legend>}
+
+## See Also
+
+- [`store.subscribe()`](../classes/Store#subscribe)
+- [The `Subscriber` type](Subscriber)

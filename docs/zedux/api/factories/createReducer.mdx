@@ -1,0 +1,70 @@
+---
+id: createReducer
+title: createReducer
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+A factory for creating Redux-style [reducers](../types/Reducer). These reducers can then be passed to [`createStore()`](createStore) or used directly in React's `useReducer()` hooks.
+
+## Examples
+
+```ts
+import { actionFactory, createReducer } from '@zedux/react'
+
+const withInitialState = createReducer('initial state')
+const withoutInitialState = createReducer()
+
+const withStringActionTypes = createReducer([]).reduce(
+  'todos/add',
+  (state, newTodo) => [...state, newTodo]
+)
+
+const multipleActions = createReducer([]).reduce(
+  ['todos/reset', 'todos/clear'],
+  () => []
+)
+
+const addTodo = actionFactory<Todo>('todos/add')
+const removeTodo = actionFactory<Todo>('todos/add')
+const withActionFactories = createReducer([])
+  .reduce(addTodo, (state, newTodo) => [...state, newTodo])
+  .reduce(removeTodo, (state, id) => state.filter(todo => todo.id !== id))
+
+const clear = actionFactory('todos/clear')
+const mixed = createReducer([])
+  .reduce(addTodo, (state, newTodo) => [...state, newTodo])
+  .reduce('todos/remove', (state, id) => state.filter(todo => todo.id !== id))
+  .reduce(['todos/reset', clear], () => [])
+```
+
+## Signature
+
+<Tabs>
+  {tab1(`createReducer = (initialState) => reducerBuilder`)}
+  {tab2(`declare const createReducer: <State = any>(
+  initialState?: State | undefined
+) => ReducerBuilder<State>`)}
+</Tabs>
+
+{<Legend>
+  <Item name="initialState">
+    <p>
+      Optional. Can be anything. Default <code>undefined</code>.
+    </p>
+    <p>
+      This will be set as the initial state of the reducer the first time it
+      runs, e.g. as part of a store creation/hierarchy change.
+    </p>
+  </Item>
+  <Item name="Returns">
+    <p>
+      A <Link to="../types/ReducerBuilder">ReducerBuilder</Link>.
+    </p>
+  </Item>
+</Legend>}
+
+## See Also
+
+- [The Stores walkthrough](../../walkthrough/stores)
+- [The `ReducerBuilder` type](../types/ReducerBuilder)

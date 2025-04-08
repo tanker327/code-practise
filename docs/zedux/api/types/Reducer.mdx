@@ -1,0 +1,86 @@
+---
+id: Reducer
+title: Reducer
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+In Zedux, reducers are exactly the same as in Redux and React. A reducer is just a function that receives the current state and an [action](Action) and returns the new state.
+
+[Stores](../classes/Store) can be configured with reducers by passing a reducer to [`createStore()`](../factories/createStore) or [`store.use()`](../classes/Store#use).
+
+## Example
+
+```ts
+import { createStore } from '@zedux/react'
+
+const counterReducer = (state = 0, action) => {
+  if (action.type === 'increment') {
+    return state + 1
+  }
+
+  if (action.type === 'decrement') {
+    return state - 1
+  }
+
+  return state
+}
+
+const store = createStore(counterReducer)
+
+store.getState() // 0
+store.dispatch({ type: 'increment' }) // 1
+store.dispatch({ type: 'increment' }) // 2
+store.dispatch({ type: 'decrement' }) // 1
+```
+
+## Creation
+
+While you can create reducers manually like we just did, Zedux exports a high-level [`createReducer()`](../factories/createReducer) factory for creating them easily:
+
+```ts
+import { createReducer, createStore } from '@zedux/react'
+
+const counterReducer = createReducer(0) // the initial state
+  .reduce('increment', state => state + 1)
+  .reduce('decrement', state => state - 1)
+
+const store = createStore(counterReducer)
+
+store.getState() // 0
+store.dispatch({ type: 'increment' }) // 1
+store.dispatch({ type: 'increment' }) // 2
+store.dispatch({ type: 'decrement' }) // 1
+```
+
+## Definition
+
+```ts
+type Reducer<State = any> = (state: State | undefined, action: Action) => State
+```
+
+{<Legend>
+  <Item name="state">
+    <p>
+      The current state of this reducer or <code>undefined</code> if this is the
+      first time the reducer is run. Note that reducers should never return
+      undefined.
+    </p>
+    <p>Common practice is to assign this parameter to a default value.</p>
+  </Item>
+  <Item name="action">
+    An <Link to="Action">Action</Link> object. Note that this will never be an{' '}
+    <Link to="ActionChain">ActionChain</Link> object - Zedux unwraps all meta
+    nodes before passing actions to the reducer layer.
+  </Item>
+  <Item name="Returns">
+    The new state or, if the action did not cause a change, the existing state.
+    Don't return undefined from reducers. To return an "empty" value, use{' '}
+    <code>null</code>.
+  </Item>
+</Legend>}
+
+## See Also
+
+- [The `Action` type](Action).
+- [`createReducer()`](../factories/createReducer).

@@ -1,0 +1,81 @@
+---
+id: AtomProvider
+title: AtomProvider
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+```ts
+import { AtomProvider } from '@zedux/react'
+```
+
+A component that provides one or more [atom instances](../classes/AtomInstance) over React context.
+
+To consume the provided instances, use [`useAtomContext()`](../hooks/useAtomContext).
+
+## Example
+
+```tsx live ecosystemId=AtomProvider/example resultVar=Parent
+const secondsAtom = atom('seconds', (start: number) => {
+  const store = injectStore(start)
+
+  injectEffect(() => {
+    const intervalId = setInterval(() => store.setState(val => val + 1), 1000)
+
+    return () => clearInterval(intervalId)
+  }, [])
+
+  return store
+})
+
+function Child() {
+  const instance = useAtomContext(secondsAtom) // no need to pass params
+  const state = useAtomValue(instance) // subscribe
+
+  return <div>Child's Seconds: {state}</div>
+}
+
+function Parent() {
+  const instance = useAtomInstance(secondsAtom, [100])
+
+  return (
+    <AtomProvider instance={instance}>
+      <Child />
+    </AtomProvider>
+  )
+}
+```
+
+Providing multiple instances:
+
+```tsx
+<AtomProvider instances={[instanceA, instanceB]}>{children}</AtomProvider>
+```
+
+## Props
+
+AtomProvider accepts **either** an `instance` prop with a single atom instance OR an `instances` prop with an array of instances. You must pass one or the other but not both.
+
+{<Legend>
+  <Item name="instance">
+    <p>
+      A single <Link to="../classes/AtomInstance">atom instance</Link>. This
+      instance will be provided over React context.
+    </p>
+  </Item>
+  <Item name="instances">
+    <p>
+      An array of atom instances. Each instance will be provided with a separate
+      React context provider.
+    </p>
+    <p>
+      Be careful reordering this list and adding/removing items since this will
+      make React destroy/recreate the entire component subtree inside <code>{`<AtomProvider>`}</code>
+      .
+    </p>
+  </Item>
+</Legend>}
+
+## See Also
+
+- [The React Context walkthrough](../../walkthrough/react-context)

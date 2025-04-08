@@ -1,0 +1,68 @@
+---
+id: createEcosystem
+title: createEcosystem
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+```ts
+import { createEcosystem } from '@zedux/react'
+```
+
+Creates an [atom ecosystem](../classes/Ecosystem).
+
+## Examples
+
+```ts
+import { createEcosystem } from '@zedux/react'
+
+const rootEcosystem = createEcosystem({ id: 'root' })
+
+const withOverrides = createEcosystem({
+  id: 'withOverrides',
+  overrides: [atomA, atomB],
+})
+
+const withOnReadyFn = createEcosystem({
+  id: 'withOnReadyFn',
+  onReady: ecosystem => {
+    // `onReady` is passed a reference to the ecosystem
+    ecosystem.getInstance(myAtom) // preload myAtom
+  },
+})
+```
+
+## Signature
+
+<Tabs>
+  {tab1(`createEcosystem = (config?) => Ecosystem`)}
+  {tab2(`declare const createEcosystem: <
+  Context extends Record<string, any> | undefined = any
+>(
+  config?: EcosystemConfig<Context>
+) => Ecosystem<any> | Ecosystem<Context>`)}
+</Tabs>
+
+{<Legend>
+  <Item name="config">
+    <p>
+      Optional. An <Link to="../types/EcosystemConfig">EcosystemConfig</Link>{' '}
+      object.
+    </p>
+    <p>
+      While all fields are optional, it's recommended to at least pass an{' '}
+      <code>id</code>.
+    </p>
+  </Item>
+  <Item name="Returns">
+    <p>
+      An <Link to="../classes/Ecosystem">Ecosystem</Link> instance, configured
+      with the passed <code>config</code>.
+    </p>
+  </Item>
+</Legend>}
+
+## See Also
+
+- [The Ecosystems walkthrough](../../walkthrough/ecosystems)
+- [The `Ecosystem` class](../classes/Ecosystem)

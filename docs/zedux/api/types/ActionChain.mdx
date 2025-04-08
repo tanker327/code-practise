@@ -1,0 +1,86 @@
+---
+id: ActionChain
+title: ActionChain
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+The object accepted by [`store.dispatch()`](../classes/Store#dispatch), thus also the object passed to [`instance.dispatch()`](../classes/AtomInstance#dispatch).
+
+The ActionChain is the key to Zedux's [store composition model](../../advanced/store-composition). ActionChains are just nested objects.
+
+All objects except the innermost contain metadata. Zedux uses certain meta types to know whether actions came from a parent or child store.
+
+The last node in the chain is a normal [Action object](Action). An ActionChain that doesn't contain any metadata is thus simply an Action.
+
+That's right. An action _is_ an ActionChain with a size of 1.
+
+:::info important
+ActionChains are **not** sent to [reducers](Reducer). Zedux unwraps the ActionChain before passing the unwrapped action to the reducer layer.
+:::
+
+## Definition
+
+```ts
+interface ActionMeta<Payload = any, Type extends string = string, Data = any> {
+  metaType: string
+  metaData?: Data
+  payload: ActionChain<Payload, Type>
+}
+
+type ActionChain<Payload = any, Type extends string = string> =
+  | ActionMeta<Payload, Type>
+  | Action<Payload, Type>
+```
+
+## ActionMeta
+
+You should never be creating ActionMeta objects yourself, but FYI: ActionMeta objects contain the following fields:
+
+{<Legend>
+  <Item name="metaType">
+    <p>A string. The type of metadata being added to the action.</p>
+  </Item>
+  <Item name="metaData">
+    <p>
+      Can be anything, including undefined. The value depends on the{' '}
+      <code>metaType</code>. For example, Zedux will set this to an array of
+      strings representing a path to a child store when it wants delegate this
+      action to that child store.
+    </p>
+  </Item>
+  <Item name="payload">
+    <p>
+      Either another ActionMeta node or the wrapped action object if this is the
+      last ActionMeta node in the chain.
+    </p>
+  </Item>
+</Legend>}
+
+## Examples
+
+```ts
+const justAnAction: ActionChain = {
+  type: 'todos/add',
+  payload: { text: 'be awesome' },
+}
+
+const fromParent: ActionChain = {
+  metaType: '@@zedux/inherit',
+  payload: {
+    type: 'todos/add',
+    payload: { text: 'be awesome' },
+  },
+}
+
+const fromChild: ActionChain = {
+  metaType: '@@zedux/delegate',
+  metaData: ['a', 'b'],
+  payload: {
+    type: 'todos/add',
+    payload: { text: 'be awesome' },
+  },
+}
+```
+
+See [Zedux's `zeduxTypes`](../utils/zeduxTypes).

@@ -1,0 +1,242 @@
+---
+id: ion
+title: ion
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+import { AtomKeyDesc } from '../classes/AtomTemplate.mdx'
+
+```ts
+import { ion } from '@zedux/react'
+```
+
+A factory for creating [ion templates](../classes/IonTemplate). Ions are a type of atom that specialize in selection and derivation operations.
+
+Ions are loosely based off of Recoil's [selectors](https://recoiljs.org/docs/api-reference/core/selector).
+
+## Example
+
+Unlike Recoil selectors, ions don't implicitly hijack `setState` calls. Use exports to explicitly set state where needed.
+
+```tsx live ecosystemId=ion/example resultVar=TempCelsius
+const tempFahrenheit = atom('tempFahrenheit', 32)
+
+const tempCelsius = ion('tempCelsius', ({ get, getInstance }) =>
+  api(((get(tempFahrenheit) - 32) * 5) / 9).setExports({
+    setTempC: newValue =>
+      getInstance(tempFahrenheit).setState((newValue * 9) / 5 + 32),
+  })
+)
+
+function TempCelsius() {
+  const [tempF, setTempF] = useAtomState(tempFahrenheit)
+  const [tempC, { setTempC }] = useAtomState(tempCelsius)
+
+  const addTenCelsius = () => setTempC(tempC + 10)
+  const addTenFahrenheit = () => setTempF(tempF + 10)
+
+  return (
+    <div>
+      Temp (Celsius): {Math.round(tempC)}
+      <br />
+      Temp (Fahrenheit): {Math.round(tempF)}
+      <br />
+      <button onClick={addTenCelsius}>Add 10 Celsius</button>
+      <br />
+      <button onClick={addTenFahrenheit}>Add 10 Fahrenheit</button>
+    </div>
+  )
+}
+```
+
+This is better in pretty much every way imaginable. Exports "just work" with editor go-to definition. They give you more control and they're beautifully explicit which reduces cognitive load, bugs, surprises, all that stuff.
+
+:::tip Zedux history
+Ions used to have 4 parameters. Back then, the 4th param was the optional config object, and the 3rd was a Recoil-esque setter interceptor. We removed it because exports already handle this, and much more elegantly.
+:::
+
+## Signature
+
+<Tabs>
+  {tab1(`ion = (key, stateFactory, config?) => newIon`)}
+  {tab2(`declare const ion: {
+  // Query Atoms
+  <
+    State = any,
+    Params extends any[] = [],
+    Exports extends Record<string, any> = Record<string, never>
+  >(
+    key: string,
+    value: (
+      getters: AtomGetters,
+      ...params: Params
+    ) => AtomApi<{
+      Exports: Exports
+      Promise: any
+      State: Promise<State>
+      Store: undefined
+    }>,
+    config?: AtomConfig<State>
+  ): IonTemplate<{
+    State: PromiseState<State>
+    Params: Params
+    Exports: Exports
+    Store: Store<PromiseState<State>>
+    Promise: Promise<State>
+  }>\n
+  // Custom Stores
+  <
+    StoreType extends Store<any> = Store<any>,
+    Params extends any[] = [],
+    Exports extends Record<string, any> = Record<string, never>,
+    PromiseType extends AtomApiPromise = undefined
+  >(
+    key: string,
+    get: (
+      getters: AtomGetters,
+      ...params: Params
+    ) =>
+      | StoreType
+      | AtomApi<{
+          Exports: Exports
+          Promise: PromiseType
+          State: StoreStateType<Store>
+          Store: StoreType
+        }>,
+    config?: AtomConfig<StoreStateType<StoreType>>
+  ): IonTemplate<{
+    State: StoreStateType<StoreType>
+    Params: Params
+    Exports: Exports
+    Store: StoreType
+    Promise: PromiseType
+  }>\n
+  // No Store
+  <
+    State = any,
+    Params extends any[] = [],
+    Exports extends Record<string, any> = Record<string, never>,
+    PromiseType extends AtomApiPromise = undefined
+  >(
+    key: string,
+    get: (
+      getters: AtomGetters,
+      ...params: Params
+    ) =>
+      | AtomApi<{
+          Exports: Exports
+          Promise: PromiseType
+          State: State
+          Store: undefined
+        }>
+      | State,
+    config?: AtomConfig<State>
+  ): IonTemplate<{
+    State: State
+    Params: Params
+    Exports: Exports
+    Store: Store<State>
+    Promise: PromiseType
+  }>\n
+  // Catch-all
+  <
+    State = any,
+    Params extends any[] = [],
+    Exports extends Record<string, any> = Record<string, never>,
+    StoreType extends Store<any> = Store<any>,
+    PromiseType extends AtomApiPromise = undefined
+  >(
+    key: string,
+    get: IonStateFactory<{
+      State: State
+      Params: Params
+      Exports: Exports
+      Store: StoreType
+      Promise: PromiseType
+    }>,
+    config?: AtomConfig<State>
+  ): IonTemplate<{
+    State: State
+    Params: Params
+    Exports: Exports
+    Store: StoreType
+    Promise: PromiseType
+  }>
+}`)}
+</Tabs>
+
+{<Legend>
+  <Item name="key">
+    <p>Required. A string.</p>
+    <p>
+      This key must be unique <b>except</b> when creating{' '}
+      <Link to="../../walkthrough/overrides">atom overrides</Link>.
+    </p>
+    <div>
+      <AtomKeyDesc />
+    </div>
+  </Item>
+  <Item name="stateFactory">
+    <p>
+      Required. A function that receives an{' '}
+      <Link to="../types/AtomGetters">AtomGetters</Link> object as its first
+      param and any params of the ion as its rest params. Can return any of the
+      following:
+    </p>
+    <ul className="spaced">
+      <li>
+        A raw value. When the ion template is instantiated, Zedux will create a
+        new store with this value as its initial state.
+      </li>
+      <li>
+        A <Link to="../classes/Store">Zedux store</Link>. This will become the
+        atom instance's <code>.store</code>.
+      </li>
+      <li>
+        <p>
+          An <Link to="../classes/AtomApi">AtomApi</Link> instance.
+        </p>
+        <p>The Atom API's value can be any of the following:</p>
+        <div>
+          <ul>
+            <li>
+              A raw value. Zedux will create a new store with this value as its
+              initial state.
+            </li>
+            <li>
+              A Zedux store. This will be the instance's <code>.store</code>.
+            </li>
+            <li>
+              A promise. This will turn the atom into a{' '}
+              <Link to="../../walkthrough/query-atoms">query atom</Link>.
+            </li>
+          </ul>
+        </div>
+        <p>
+          The Atom API's exports will be set as the atom instance's{' '}
+          <code>.exports</code>.
+        </p>
+        <p>
+          The Atom API's promise will be set as the atom instance's{' '}
+          <code>.promise</code>.
+        </p>
+      </li>
+    </ul>
+  </Item>
+  <Item name="config">
+    <p>
+      Optional. An <Link to="../types/AtomConfig">AtomConfig</Link> object.
+    </p>
+  </Item>
+  <Item name="Returns">
+    <p>
+      An <Link to="../classes/IonTemplate">IonTemplate instance</Link>.
+    </p>
+  </Item>
+</Legend>}
+
+## See Also
+
+- [The `atom()` factory](atom)
+- [The Selectors walkthrough](../../walkthrough/selectors)
+- [The `IonTemplate` class](../classes/IonTemplate)

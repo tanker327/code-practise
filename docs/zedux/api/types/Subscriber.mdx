@@ -1,0 +1,185 @@
+---
+id: Subscriber
+title: Subscriber
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+A function passed to [`store.subscribe()`](../classes/Store#subscribe). Zedux will call the function when certain events happen.
+
+There are 3 types of subscribers:
+
+- normal (or "next") - will be called on state change.
+- error - will be called whenever a dispatch or setState call throws an error.
+- effects - will be called every time an action is dispatched to the store, regardless of whether the action triggered a state update or threw an error.
+
+Passing a function to `store.subscribe()` registers a normal subscriber. To register error and effect subscribers, pass an object with optional `next`, `error`, and `effects` properties.
+
+## Normal
+
+```ts
+store.subscribe((newState, oldState, action) => {
+  console.log('state changed', { newState, oldState, action })
+})
+
+// or
+store.subscribe({
+  next: (newState, oldState, action) => ...
+})
+```
+
+Also called "next" subscribers. These subscribers receive 3 parameters:
+
+```ts
+type NextSubscriber<State = any> = (
+  newState: State,
+  oldState: State | undefined,
+  action: ActionChain
+) => void
+```
+
+{<Legend>
+  <Item name="newState">
+    <p>
+      The current state of the store, after the latest operation changed it.
+    </p>
+  </Item>
+  <Item name="oldState">
+    <p>
+      The state of the store before the latest operation changed it. Can be
+      undefined if the subscriber is registered before the store's state is set.
+    </p>
+  </Item>
+  <Item name="action">
+    <p>
+      The action that triggered the state change. If the state change was due to
+      a <code>.setState()</code> call or an action dispatched in a parent or
+      child store, this action will contain special metadata that can be used to
+      reproduce the state update from this store for time travel.
+    </p>
+  </Item>
+</Legend>}
+
+## Error
+
+```ts
+store.subscribe({
+  error: err => {
+    console.error('Store update raised an error', err)
+  },
+})
+```
+
+Will be called if an error is thrown in any reducer or in a function passed to `.setState()`
+
+```ts
+store.setState(currentState => {
+  throw 'test-error'
+})
+```
+
+Error subscribers receive a single parameter:
+
+```ts
+type ErrorSubscriber = (error: Error) => void
+```
+
+{<Legend>
+  <Item name="error">
+    <p>
+      The error thrown by the store's reducer layer or by the function passed to{' '}
+      <code>store.setState()</code> or <code>store.setStateDeep()</code>.
+    </p>
+  </Item>
+</Legend>}
+
+## Effects
+
+```ts
+store.subscribe({
+  effects: ({ action, error, newState, oldState, store }) => {},
+})
+```
+
+Effects subscribers will be called every time an action is dispatched to the store - regardless of whether that action causes a state change, raises an error, or has no effect.
+
+They are also called for [pseudo-actions](../glossary#pseudo-action) (e.g. actions generated from `setState()` calls) that trigger state updates or raise errors.
+
+:::note
+The action could be an [ActionChain](ActionChain) containing [store composition](../../advanced/store-composition)-related meta nodes.
+:::
+
+Effects subscribers are not called when a `setState()` call doesn't change the state.
+
+```ts
+store.dispatch({ type: 'anything' }) // hits effects subscribers
+parentStore.dispatch({ type: 'anything' }) // hits store's effects subscribers
+childStore.dispatch({ type: 'anything' }) // hits store's effects subscribers
+store.setState(state => !state) // hits effects subscribers
+store.setState(state => state) // doesn't hit effects subscribers
+```
+
+Effects subscribers receive a single [StoreEffect object](StoreEffect).
+
+## Example
+
+```tsx live ecosystemId=Subscriber/example resultVar=Subscribers
+const store = createStore(null, 0)
+
+function Subscribers() {
+  const [log, setLog] = useState('')
+
+  useEffect(() => {
+    const subscription = store.subscribe({
+      next: (newState, oldState, action) =>
+        setLog(
+          log =>
+            `${log}Next - ${JSON.stringify({
+              newState,
+              oldState,
+              action,
+            })}\n\n`
+        ),
+      error: (...params) => setLog(log => `${log}Error - ${params}\n\n`),
+      effects: ({ store, ...params }) =>
+        setLog(log => `${log}Effect - ${JSON.stringify(params)}\n\n`),
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  return (
+    <>
+      <pre>{log}</pre>
+      <button onClick={() => store.setState(1)}>Set to 1</button>
+      <button onClick={() => store.setState(2)}>Set to 2</button>
+      <button onClick={() => store.dispatch({ type: 'test' })}>
+        Dispatch Action
+      </button>
+      <button
+        onClick={() => {
+          try {
+            store.setState(() => {
+              throw new Error('test-error')
+            })
+          } catch (err) {}
+        }}
+      >
+        Trigger Error
+      </button>
+    </>
+  )
+}
+```
+
+## Definition
+
+```ts
+type Subscriber<State = any> = NextSubscriber<State> | SubscriberObject<State>
+
+interface SubscriberObject<State = any> {
+  next?: NextSubscriber<State>
+  effects?: EffectsSubscriber<State>
+  error?: ErrorSubscriber
+}
+```

@@ -1,0 +1,277 @@
+---
+id: suspense
+title: Suspense
+---
+
+Atoms are extremely flexible when working with React suspense. The [Atom APIs](atom-apis) walkthrough showed how to set an atom instance's promise. It's time to learn how this works with suspense.
+
+:::tip you will learn
+
+- How to efficiently use atoms as suspending resources in React
+- Best practices for creating and updating promises
+
+:::
+
+## Quick Overview
+
+To quickly review setting promises with an [AtomApi](../api/classes/AtomApi), let's create an example atom that we'll use throughout this walkthrough:
+
+```ts
+import { api, atom } from '@zedux/react'
+
+const fetcherAtom = atom('fetcher', (url: string) => {
+  const store = injectStore(undefined, { subscribe: false })
+
+  const promise = fetch(url).then(async result =>
+    store.setState(await result.json())
+  )
+
+  return api(store).setPromise(promise)
+})
+```
+
+When `fetcherAtom` is used in a component (e.g. via [`useAtomValue()`](../api/hooks/useAtomValue) or [`useAtomInstance()`](../api/hooks/useAtomInstance)), Zedux will throw the promise, allowing React to suspend. When the promise completes, React will recreate the component and Zedux will no longer throw the now-resolved promise.
+
+Using `subscribe: false` is essential to make this approach work. Without it the promise will make this atom reevaluate every time it completes, which would recreate the promise, making an infinite loop.
+
+We'll look at a better approach in the [query atoms walkthrough](query-atoms), but this'll do for now.
+
+You can access the promise directly on the atom instance via [`instance.promise`](../api/classes/AtomInstance#promise). You can use this outside React to wait until an atom instance is "ready":
+
+```ts
+const fetchUsersInstance = myEcosystem.getInstance(fetcherAtom, ['/users'])
+fetchUsersInstance.promise.then(() => {
+  // users are loaded!
+})
+```
+
+## Changing the Promise
+
+If the promise reference changes on a subsequent evaluation, Zedux will make all components using the atom instance suspend again.
+
+The `fetcherAtom` above will create a new promise reference every time it evaluates. But with the current implementation, it has no dependencies that could cause it to reevaluate!
+
+Well, as the [the selectors walkthrough](selectors) showed, Zedux gives you lots of control over when evaluations happen. In this case, you can use [`instance.invalidate()`](../api/classes/AtomInstance#invalidate) to force the atom to reevaluate:
+
+```tsx
+function RefreshUsers() {
+  const instance = useAtomInstance(fetcherAtom, ['/users'])
+
+  return <button onClick={() => instance.invalidate()}>Refresh</button>
+}
+```
+
+When this button is clicked, `fetcherAtom` will reevaluate and create a new promise reference, causing all components using it to suspend again.
+
+Here's a live sandbox putting this all together:
+
+```tsx live ecosystemId=suspense/first-example resultVar=Users
+// mock stuff for example:
+const mockUsers = ['Joe', 'Jim', 'Sally', 'Jill', 'Bob', 'Jamie']
+const mockFetch = () =>
+  new Promise(resolve =>
+    setTimeout(
+      () => resolve([...mockUsers].sort(() => Math.random() - 0.5)),
+      1500
+    )
+  )
+
+// start here:
+const fetcherAtom = atom('fetcher', (url: string) => {
+  const store = injectStore([], { subscribe: false }) // important!
+  const promise = mockFetch(url).then(data => store.setState(data))
+
+  return api(store).setPromise(promise)
+})
+
+function RefreshUsers() {
+  const instance = useAtomInstance(fetcherAtom, ['/users'], {
+    suspend: false,
+  })
+
+  return <button onClick={() => instance.invalidate()}>Refresh</button>
+}
+
+function UsersList() {
+  const users = useAtomValue(fetcherAtom, ['/users'])
+
+  return (
+    <ul>
+      {users.map(user => (
+        <li key={user}>{user}</li>
+      ))}
+    </ul>
+  )
+}
+
+function Users() {
+  return (
+    <>
+      <Suspense fallback={<div>fetching users...</div>}>
+        <UsersList />
+      </Suspense>
+      <RefreshUsers />
+    </>
+  )
+}
+```
+
+When the "Refresh" button is clicked, `fetcherAtom` reevaluates, creates a new promise, and `UsersList` suspends again.
+
+## Forwarding Promises
+
+Say we have a graph where atom `a` injects atom `b` which injects atom `c`:
+
+```
+a -> b -> c
+```
+
+Atoms `a` and `b` don't set promises, but atom `c` does. Now say we use atom `a` in a component. Since we didn't set a promise in atom `a` itself, React won't suspend. Atom `c`'s promise will be ignored!
+
+Currently, to get around this, promises must be forwarded manually:
+
+```ts
+const atomC = atom('c', () => {
+  return api().setPromise(myPromise)
+})
+
+const atomB = atom('b', () => {
+  const c = injectAtomInstance(atomC)
+
+  return api().setPromise(c.promise)
+})
+
+const atomA = atom('a', () => {
+  const b = injectAtomInstance(atomB)
+
+  return api().setPromise(b.promise)
+})
+```
+
+This gives you full flexibility over the async flow. You can use `Promise.all()` yourself. Or use a `Promise.race()` or any helper or library for handling parallelization or serialization of promises - you can even use RxJS.
+
+```ts
+import { from } from 'rxjs'
+
+const rxAtom = atom('rx', () => {
+  const asyncInstance = injectAtomInstance(myAsyncAtom)
+
+  return injectPromise(
+    controller => {
+      const subscription = from(asyncInstance.promise)
+        .pipe(doCrazyRxStuff)
+        .subscribe(result => store.setState(result))
+
+      controller.signal.addEventListener('abort', () => {
+        subscription.unsubscribe()
+      })
+    },
+    [asyncInstance.promise]
+  )
+})
+```
+
+We'll see [`injectPromise()`](../api/injectors/injectPromise) at work in the [query atoms walkthrough](query-atoms).
+
+While this async flexibility is intentional, it is boilerplate-heavy compared to Recoil's async-by-default approach. Though of course, lots of this boilerplate can be abstracted away using custom injectors.
+
+We may create an atom type someday that mimics Recoil. In fact, an early prototype of Zedux already did. We pivoted from that approach because we needed full control over asynchrony. In fact, it's the main reason we decided against using Recoil at Omnistac.
+
+Zedux's async power and predictably synchronous graph updates are well worth the trade-off of async boilerplate, especially in more complex apps.
+
+We may also make it possible for [plugins](../advanced/plugins) to implement automatic promise forwarding. If that sounds useful to you, feel free to open an issue about it!
+
+## No Thanks
+
+Suspense is on by default in Zedux. But suspense is still technically experimental in React. To turn it off in Zedux, either don't set a promise on your atoms (you can still use exported refs or even store state to pass promises around) or use the `suspend: false` hook option:
+
+```ts
+useAtomValue(myAtom, ['param-1', 'param-2'], { suspend: false })
+useAtomValue(paramlessAtom, [], { suspend: false })
+useAtomValue(anAtomInstance, [], { suspend: false })
+
+// the same applies for all hooks that take atoms, e.g.:
+useAtomState(myAtom, ['param-1', 'param-2'], { suspend: false })
+
+useAtomInstance(paramlessAtom, [], { suspend: false })
+```
+
+### Traditional Flow
+
+In components that you don't want to suspend, the `isSuccess`, `isError`, and `isLoading` flags can be used to implement old-school loading flows:
+
+```tsx
+function UserList() {
+  const { data, isLoading, isSuccess } = useAtomValue(fetchUsersAtom, [], {
+    suspend: false,
+  })
+
+  if (isLoading) return <div>Loading...</div>
+
+  if (isSuccess) return data.map(user => <User id={user.id} />)
+}
+```
+
+## Manual Suspense
+
+You don't have to use Zedux's built-in suspense handling. Here's an example exporting a promise and handling suspense by hand:
+
+```tsx live ecosystemId=suspense/manual-suspense resultVar=App
+// mock stuff for example:
+const mockFetch = (url: string) =>
+  new Promise(resolve =>
+    setTimeout(() => resolve(`Fetched url: "${url}"!`), 1500)
+  )
+
+// start here:
+const fetcherAtom = atom('fetcher', (url: string) => {
+  const store = injectStore({ isLoading: true })
+  const promiseRef = injectRef()
+
+  promiseRef.current = injectMemo(
+    () =>
+      mockFetch(url).then(data => {
+        store.setState({
+          data,
+          isLoading: false,
+        })
+      }),
+    [url]
+  )
+
+  return api(store).setExports({ promiseRef })
+})
+
+function Username() {
+  const [{ data, isError, isLoading }, { promiseRef }] = useAtomState(
+    fetcherAtom,
+    ['/user']
+  )
+
+  if (isError) {
+    throw 'User request failed'
+  } else if (isLoading) {
+    throw promiseRef.current
+  }
+
+  return <div>{data}</div>
+}
+
+function App() {
+  return (
+    <Suspense fallback={<div>Falling Back</div>}>
+      <Username />
+    </Suspense>
+  )
+}
+```
+
+## Recap
+
+- Make an atom a suspending resource in React by setting its promise via `.setPromise()` on a returned Atom API.
+- Promises must be forwarded manually to trigger React suspense.
+- Turn suspense off with `{ suspend: false }` or just don't set a promise.
+
+## Next Steps
+
+One of the most efficient ways to trigger React suspense is with [query atoms](query-atoms).

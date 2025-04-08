@@ -1,0 +1,581 @@
+---
+id: plugins
+title: Plugins
+---
+
+:::caution low-level warning
+This API is very low-level. Library authors and advanced users may want to make use of it.
+
+If you're new here, you probably don't want to read this doc yet.
+:::
+
+While Zedux is designed to be extremely useful out of the box, that doesn't mean it handles everything. Plugins satisfy the extremes of hackability.
+
+Zedux stores don't take middleware. The [stores walkthrough](../walkthrough/stores) showed how to hook into a store's side effects using effects subscribers. But these are passive hooks. Sometimes you need more active control over state flow.
+
+Zedux doesn't offer a dedicated plugin system at the store level at all. In Zedux, plugins live on the ecosystem.
+
+:::tip you will learn:
+How to make a Zedux plugin and use it to implement a simple logger.
+:::
+
+## The Gist
+
+Plugins hook into ecosystems. They receive special events called "mod events". These are just [action objects](../api/types/Action) with special types and payloads detailing internal events in the ecosystem.
+
+For example, here's what a "stateChanged" mod event might look like for a simple counter atom:
+
+```ts
+{
+  type: 'stateChanged',
+  payload: {
+    instance: <a reference to the counter atom instance>,
+    newState: 1,
+    oldState: 0,
+    reasons: [
+      {
+        action: {
+          payload: 1,
+          type: '@@zedux/hydrate', // a store.setState() call
+        },
+        newState: 1,
+        oldState: 0,
+        sourceType: 'Store',
+        type: 'state changed',
+      },
+    ],
+  },
+}
+```
+
+You should recognize this [reason list](../api/types/EvaluationReason) if you've used [`injectWhy()`](../api/injectors/injectWhy) (and if you haven't, you should 'cause it's cool).
+
+Ecosystems don't create mod events by default as it adds some overhead. But plugins can turn this behavior on by enabling "mods".
+
+Let's get into it.
+
+## Creating A Plugin
+
+Plugins are instances of the [ZeduxPlugin class](../api/classes/ZeduxPlugin). You create one with the `new` operator:
+
+```ts
+import { ZeduxPlugin } from '@zedux/react'
+
+const myFirstPlugin = new ZeduxPlugin()
+```
+
+:::note
+This is the only API in all of Zedux that you instantiate yourself using the `new` operator. This is intentional as plugins are meant to feel more low-level.
+:::
+
+This plugin is all ready to be plugged in.
+
+## Register the Plugin
+
+To add a plugin to the ecosystem, call [`ecosystem.registerPlugin()`](../api/classes/Ecosystem#registerplugin).
+
+```ts
+const ecosystem = createEcosystem({ id: 'root' })
+ecosystem.registerPlugin(myFirstPlugin)
+```
+
+This kicks off a sort of handshake between the ecosystem and the plugin. The ecosystem subscribes to changes in the plugin's requested "mods", and the plugin subscribes to mod events in the ecosystem. This is essentially a bidirectional (two-way) stream.
+
+Registering the plugin in the ecosystem only sets up half of the two-way stream. The other half is the plugin's responsibility. To do that, you need to register the ecosystem in the plugin.
+
+## Register the Ecosystem
+
+The `ZeduxPlugin` constructor takes a single object. You can pass a `registerEcosystem` function on this object:
+
+```ts
+const plugin = new ZeduxPlugin({
+  registerEcosystem: ecosystem => {
+    console.log('got ecosystem!', ecosystem)
+  },
+})
+```
+
+The `registerEcosystem` function is called when the plugin is registered in an ecosystem. It receives a single parameter - a reference to that ecosystem.
+
+This is where you handle the other half of the "handshake". And the main thing you're shaking is called the mod bus.
+
+### The `modBus`
+
+Ecosystems expose a [`modBus` property](../api/classes/Ecosystem#modbus) that plugins can subscribe to. This message bus is actually just a Zedux [store](../api/classes/Store). This is where the ecosystem dispatches mod events.
+
+The `registerEcosystem` function usually subscribes to this bus and returns a cleanup function to unsubscribe and perform cleanup if the plugin is unregistered or the ecosystem is destroyed.
+
+```ts
+const plugin = new ZeduxPlugin({
+  registerEcosystem: ecosystem => {
+    // highlight-next-line
+    const subscription = ecosystem.modBus.subscribe({
+      effects: ({ action }) => {
+        console.log('got mod event!', action)
+      },
+    })
+
+    return () => subscription.unsubscribe()
+  },
+})
+```
+
+Typically you'll want to register a single [effects subscriber](../api/types/Subscriber#effects) with the ecosystem's `modBus`.
+
+Now the plugin is ready to receive mod events. But it won't actually receive any yet because the ecosystem doesn't know what the plugin wants. To make the ecosystem push mod events to the plugin, you need to turn on mods.
+
+## Mods
+
+Mods are features that ecosystems disable by default for performance reasons. Every mod is represented by a string. You can set a plugin's initial list of mods by passing an `initialMods` property to the `ZeduxPlugin` constructor:
+
+```ts
+const myPlugin = new ZeduxPlugin({
+  initialMods: ['stateChanged'],
+})
+```
+
+### The `modStore`
+
+Every plugin has a `modStore`. This is just a Zedux store. When the plugin is registered in an ecosystem, the ecosystem subscribes to this store to receive updates about which plugins need which mods. If no plugins need a given mod, the ecosystem turns it off.
+
+The `initialMods` property sets the initial state of this store. The state should always be an array of string mod names.
+
+```ts
+const myPlugin = new ZeduxPlugin({
+  initialMods: ['stateChanged'],
+})
+
+myPlugin.modStore.getState() // ['stateChanged']
+
+myPlugin.modStore.setState([]) // turn off all mods
+
+myPlugin.modStore.setState(
+  ['edgeCreated', 'edgeRemoved'] // turn on graph update mods
+)
+```
+
+:::note
+Removing a mod from the `modStore` will only turn off the mod in the ecosystem if no other plugins need that mod.
+:::
+
+## Available Mods
+
+You can see the list of available mods by reading from the static `ZeduxPlugin.actions` property:
+
+```ts live resultVar=allMods
+// Easy way to see all available mods:
+const allMods = Object.keys(ZeduxPlugin.actions)
+```
+
+This `.actions` object maps all mod names to the actual [action factories](../api/types/ActionFactory) that Zedux uses to create mod events of that type. Thus you can use the `.type` property of these action factories to check for mods of that type:
+
+```ts
+const plugin = new ZeduxPlugin({
+  initialMods: ['stateChanged'],
+
+  registerEcosystem: ecosystem => {
+    const subscription = ecosystem.modBus.subscribe({
+      effects: ({ action }) => {
+        // highlight-next-line
+        if (action.type === ZeduxPlugin.actions.stateChanged.type) {
+          console.log('got stateChanged mod event!', action)
+        }
+      },
+    })
+
+    return () => subscription.unsubscribe()
+  },
+})
+```
+
+For TS users, this is the recommended type-safe way to check mod event types.
+
+For details about each mod type, see the [`ZeduxPlugin` API documentation](../api/classes/ZeduxPlugin#mod-details)
+
+## Plugin State
+
+Plugins often need to track their own state. Plugins have 2 main places to store it:
+
+- In the ecosystem itself. The plugin is free to bring and instantiate its own atoms in the ecosystem it's plugged into.
+- In the `registerEcosystem` function body.
+
+Storing state in the ecosystem is fine, but can be seen as an anti-pattern since plugins usually handle orthogonal concerns to those of the ecosystem itself. Plus, there are some cases where it doesn't work well - for example, when tracking every state change to implement [time travel](time-travel#ecoystem-traveler), you'd have to specifically ignore all state changes in the plugin's atoms. Otherwise, you'd run into the Ultimate Annoyance of state update loops.
+
+Storing state in the `registerEcosystem` function body is the most flexible. The state remains until the plugin is explicitly unregistered from the ecosystem or the ecosystem is destroyed. You can also return a cleanup function to ensure state is destroyed gracefully.
+
+```ts
+const loggingPlugin = new ZeduxPlugin({
+  initialMods: ['stateChanged'],
+
+  registerEcosystem: ecosystem => {
+    // track state right here:
+    // highlight-next-line
+    const state = { logs: [] }
+
+    const subscription = ecosystem.modBus.subscribe({
+      effects: ({ action }) => {
+        if (action.type === ZeduxPlugin.actions.stateChanged.type) {
+          state.logs.push(action)
+        }
+      },
+    })
+
+    return () => {
+      subscription.unsubscribe()
+      // highlight-next-line
+      // handle state destruction here if needed (this example doesn't need it)
+    }
+  },
+})
+```
+
+To get the best of both worlds, you can absolutely create an entire ecosystem inside the plugin. This is what Zedux's devtools do, and it is very powerful.
+
+```ts
+const loggingAtom = atom('logging', () => {
+  const store = injectStore({ logs: [] })
+
+  return api(store).setExports({
+    log: action => store.setState(state => [...state, action]),
+  })
+})
+
+const loggingPlugin = new ZeduxPlugin({
+  initialMods: ['stateChanged'],
+
+  registerEcosystem: ecosystem => {
+    // create a whole ecosystem:
+    // highlight-start
+    const pluginEcosystem = createEcosystem({
+      id: `${ecosystem.id}-loggingPlugin`,
+    })
+    // highlight-end
+    const { log } = pluginEcosystem.getInstance(loggingAtom).exports
+
+    const subscription = ecosystem.modBus.subscribe({
+      effects: ({ action }) => {
+        if (action.type === ZeduxPlugin.actions.stateChanged.type) {
+          log(action)
+        }
+      },
+    })
+
+    return () => {
+      subscription.unsubscribe()
+      // highlight-next-line
+      pluginEcosystem.destroy() // remember destruction!
+    }
+  },
+})
+```
+
+This is overkill for this simple example, but scales very well.
+
+## Talking to the Plugin
+
+Now you have a beautiful plugin all plugged in, but what if your app needs to tell the plugin to do something? How do you communicate with the plugin? How does it communicate back to the app?
+
+There are a few ways:
+
+### Via `modBus`
+
+You can use the ecosystem's `modBus` to send messages back and forth.
+
+```ts
+const plugin = new ZeduxPlugin({
+  registerEcosystem: ecosystem => {
+    const subscription = ecosystem.modBus.subscribe({
+      effects: ({ action }) => {
+        if (action.type === '@@myPlugin/specialType') {
+          // do special stuff
+        }
+      },
+    })
+
+    return () => subscription.unsubscribe()
+  },
+})
+
+myEcosystem.registerPlugin(plugin)
+myEcosystem.modBus.dispatch({ type: '@@myPlugin/specialType' })
+```
+
+This is the least TypeScript-friendly, but is a serviceable simple solution.
+
+:::tip
+Everything that hooks into the `modBus` should treat it as a global message bus that they don't have full control over. Always namespace your type strings and check the type of received events before interacting with them.
+:::
+
+### Via Plugin Atom
+
+You can create a special atom that both your app and the plugin use to interact with each other.
+
+```tsx live ecosystemId=plugin-atom-example noProvide resultVar=App
+const changeCounterAtom = atom('changeCounter', 0)
+const usernameAtom = atom('username', '')
+
+const plugin = new ZeduxPlugin({
+  initialMods: ['stateChanged'],
+
+  registerEcosystem: ecosystem => {
+    const counterInstance = ecosystem.getInstance(changeCounterAtom)
+    const cleanup = counterInstance.addDependent() // manual graphing
+
+    const subscription = ecosystem.modBus.subscribe({
+      effects: ({ action }) => {
+        if (
+          action.type !== ZeduxPlugin.actions.stateChanged.type ||
+          // prevent state update loops
+          action.payload.instance?.id === counterInstance.id
+        ) {
+          return
+        }
+
+        counterInstance.setState(state => state + 1)
+      },
+    })
+
+    return () => {
+      cleanup()
+      subscription.unsubscribe()
+    }
+  },
+})
+
+function ChangeCounter() {
+  const count = useAtomValue(changeCounterAtom)
+  const [username, setUsername] = useAtomState(usernameAtom)
+
+  return (
+    <>
+      <div>State Changes: {count}</div>
+      <input
+        onChange={event => setUsername(event.target.value)}
+        value={username}
+      />
+    </>
+  )
+}
+
+function App() {
+  const ecosystem = useMemo(() => {
+    const ecosystem = createEcosystem({ id: 'plugin-atom-example' })
+
+    ecosystem.registerPlugin(plugin)
+
+    return ecosystem
+  }, [])
+
+  return (
+    <EcosystemProvider ecosystem={ecosystem}>
+      <ChangeCounter />
+    </EcosystemProvider>
+  )
+}
+```
+
+:::tip
+As the comment in the above sandbox says, be wary of update loops when changing atom state from plugins!
+:::
+
+This approach affords lots of flexibility. For example, you could make the atom export refs that the plugin populates to straight-up expose functions to all atoms in the plugged-in ecosystem.
+
+### Via Plugin Ecosystem
+
+If the plugin creates its own ecosystem and you know the id, you can use [`getEcosystem()`](../api/utils/internal-utils#getecosystem) to retrieve the plugin's ecosystem anywhere. Then use that ecosystem to interact with its atoms like you would with any ecosystem.
+
+Or, a better solution with more boilerplate, create the plugin's ecosystem at the top of your app and simultaneously use it to create the plugin and provide it to the rest of the app.
+
+```tsx live ecosystemId=plugin-ecosystem-example noProvide resultVar=App
+const changeCounterAtom = atom('changeCounter', 0)
+const usernameAtom = atom('username', '')
+
+const makePlugin = pluginEcosystem =>
+  new ZeduxPlugin({
+    initialMods: ['stateChanged'],
+
+    registerEcosystem: ecosystem => {
+      const counterInstance = pluginEcosystem.getInstance(changeCounterAtom)
+      const cleanup = counterInstance.addDependent() // manual graphing
+
+      const subscription = ecosystem.modBus.subscribe({
+        effects: ({ action }) => {
+          if (
+            action.type !== ZeduxPlugin.actions.stateChanged.type ||
+            // prevent state update loops
+            action.payload.instance?.id === counterInstance.id
+          ) {
+            return
+          }
+
+          counterInstance.setState(state => state + 1)
+        },
+      })
+
+      return () => {
+        cleanup()
+        subscription.unsubscribe()
+      }
+    },
+  })
+
+function ChangeCounter() {
+  const ecosystem = useEcosystem()
+  const [count, setCount] = useState(0)
+  const [username, setUsername] = useAtomState(usernameAtom)
+
+  // subscribing to atoms in other ecosystems can't be done with the normal
+  // Zedux hooks. So useEffect or extract your own hook:
+  useEffect(() => {
+    const counterInstance = ecosystem.context.pluginEcosystem.getInstance(
+      changeCounterAtom
+    )
+    const cleanup = counterInstance.addDependent({
+      callback: (signal, val) => setCount(val),
+    })
+
+    return cleanup
+  }, [])
+
+  return (
+    <>
+      <div>State Changes: {count}</div>
+      <input
+        onChange={event => setUsername(event.target.value)}
+        value={username}
+      />
+    </>
+  )
+}
+
+function App() {
+  const ecosystem = useMemo(() => {
+    const pluginEcosystem = createEcosystem({ id: 'plugin-ecosystem' })
+    const ecosystem = createEcosystem({
+      // use ecosystem context to expose the plugin's ecosystem:
+      context: { pluginEcosystem },
+      id: 'plugin-ecosystem-example',
+    })
+
+    ecosystem.registerPlugin(makePlugin(pluginEcosystem))
+
+    return ecosystem
+  }, [])
+
+  return (
+    <EcosystemProvider ecosystem={ecosystem}>
+      <ChangeCounter />
+    </EcosystemProvider>
+  )
+}
+```
+
+This example uses [ecosystem context](../api/classes/Ecosystem#context) to expose the plugin's ecosystem to all atoms in the ecosystem. This isn't the only way to provide the ecosystem. You could use React context to provide it only in React. Or you could create an atom in the app's ecosystem that holds and exposes the plugin's ecosystem (we need to go deeper...)
+
+## Action Streams
+
+This guide has used effects subscribers to hook into the ecosystem's `modBus`. But if you're using RxJS, a more elegant solution is to hook into the `modBus` store's [action stream](../api/classes/Store#actionstream):
+
+```ts
+import { ZeduxPlugin } from '@zedux/react'
+import { from } from 'rxjs'
+import { filter, mergeMap } from 'rxjs/operators'
+
+const plugin = new ZeduxPlugin({
+  registerEcosystem: ecosystem => {
+    const subscription = from(ecosystem.modBus.actionStream()).pipe(
+      filter(event => event.type === ZeduxPlugin.actions.stateChanged.type),
+      mergeMap(event => {
+        // handle the stateChanged mod event
+      })
+    )
+
+    return () => subscription.unsubscribe()
+  },
+})
+```
+
+## Uses
+
+Plugins can accomplish some crazy things. Some examples:
+
+- Logging.
+- Monitoring reevaluations.
+- Global or granular time travel with undo/redo and replayable actions.
+- Tracking performance metrics.
+- Creating a beautiful visualization of the atom graph.
+- Destroying stale atom instances when the cache reaches a certain size.
+- Setting up a kill switch to destroy stale atom instances.
+- Gaining more control in SSR flows e.g. by hydrating atoms manually on creation.
+- Aspect-oriented programming.
+
+While we don't recommend implicitly changing state, you can really do whatever you want.
+
+## Example
+
+Time to put it all together. The following example creates and registers a `loggingPlugin` that tracks state changes only on atoms with logging enabled.
+
+```tsx live ecosystemId=plugin-example noProvide resultVar=App
+const inputAtom = atom('input', '', { flags: ['enable-logging'] })
+const logAtom = atom('log', [])
+
+const loggingPlugin = new ZeduxPlugin({
+  initialMods: ['stateChanged'],
+
+  registerEcosystem: ecosystem => {
+    const subscription = ecosystem.modBus.subscribe({
+      effects: ({ action }) => {
+        if (
+          // only handle stateChanged mod events
+          action.type !== ZeduxPlugin.actions.stateChanged.type ||
+          // only log changes in atoms with logging enabled
+          !action.payload.instance?.template.flags?.includes('enable-logging')
+        ) {
+          return
+        }
+
+        ecosystem
+          .getInstance(logAtom)
+          .setState(log => [...log, action.payload.newState])
+      },
+    })
+
+    return () => subscription.unsubscribe()
+  },
+})
+
+function LameForm() {
+  const [input, setInput] = useAtomState(inputAtom)
+  const log = useAtomValue(logAtom)
+
+  return (
+    <>
+      <input onChange={event => setInput(event.target.value)} value={input} />
+      <pre>{JSON.stringify(log, null, 2)}</pre>
+    </>
+  )
+}
+
+function App() {
+  const ecosystem = useMemo(() => {
+    const ecosystem = createEcosystem({ id: 'plugin-example' })
+
+    ecosystem.registerPlugin(loggingPlugin)
+
+    return ecosystem
+  }, [])
+
+  return (
+    <EcosystemProvider ecosystem={ecosystem}>
+      <LameForm />
+    </EcosystemProvider>
+  )
+}
+```
+
+## Recap
+
+- Create a plugin with `new ZeduxPlugin()`.
+- Turn mods on with `initialMods` and/or by setting the plugin's `modStore`'s state.
+- Subscribe to mod events by registering an effects subscriber with `ecosystem.modBus` in `registerEcosystem`.
+- Have fun.

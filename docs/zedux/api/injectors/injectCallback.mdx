@@ -1,0 +1,118 @@
+---
+id: injectCallback
+title: injectCallback
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+```ts
+import { injectCallback } from '@zedux/react'
+```
+
+An [injector](../glossary#injector) that memoizes a function and wraps it in an [`ecosystem.batch()`](../classes/Ecosystem#batch) call. This is essentially a shorthand for the following:
+
+```ts
+const { ecosystem } = injectAtomGetters()
+const setTwoStores = injectMemo(
+  () => (stateA, stateB) => {
+    ecosystem.batch(() => {
+      storeA.setState(stateA)
+      storeB.setState(stateB)
+    })
+  },
+  []
+)
+
+// equivalent using injectCallback:
+const setTwoStores = injectCallback((stateA, stateB) => {
+  storeA.setState(stateA)
+  storeB.setState(stateB)
+}, [])
+```
+
+The returned function reference will only change when the passed dependencies change on subsequent evaluations.
+
+Can be useful when exporting functions from an atom to ensure that you're only exporting stable references.
+
+```tsx live ecosystemId=injectCallback/example resultVar=Seconds
+const counterAtom = atom('counter', () => {
+  const store = injectStore(0)
+
+  const add = injectCallback(
+    (amount: number) => store.setState(state => state + amount),
+    [] // no deps - the callback reference will never change
+  )
+
+  return api(store).setExports({ add })
+})
+
+function Seconds() {
+  const state = useAtomValue(counterAtom)
+  const { add } = useAtomInstance(counterAtom).exports
+
+  return (
+    <>
+      <div>Current Count: {state}</div>
+      <button onClick={() => add(1)}>Add 1</button>
+      <button onClick={() => add(5)}>Add 5</button>
+    </>
+  )
+}
+```
+
+Miscellaneous:
+
+```ts
+import { injectCallback, injectMemo } from '@zedux/react'
+
+const add = injectCallback((a: number, b: number) => a + b, [])
+const withDeps = injectCallback(myFn, [depA, depB])
+
+// to prevent automatic batching, use `injectMemo` instead ...
+const withoutBatching = injectMemo(() => myFn, [depA, depB])
+
+// ... or use an inline function if memoization isn't needed:
+const inlineCallback = myFn
+```
+
+## Signature
+
+<Tabs>
+  {tab1(`injectCallback = (callback, deps?) => callback`)}
+  {tab2(`declare const injectCallback: <Args extends any[] = [], Ret = any>(
+  callback: (...args: Args) => Ret,
+  deps?: InjectorDeps
+) => (...args: Args) => Ret`)}
+</Tabs>
+
+{<Legend>
+  <Item name="callback">
+    Required. The function to memoize and auto-batch. This function reference
+    will be discarded when deps are the same.
+  </Item>
+  <Item name="deps">
+    <p>
+      Optional (though you'll always want to pass it). An array containing
+      absolutely anything.
+    </p>
+    <p>
+      If any items in this array change on a subsequent evaluation, the
+      previously memoized callback will be discarded, replaced with the
+      newly-passed function.
+    </p>
+    <p>
+      Pass an empty array to prevent the returned callback reference from ever
+      changing, as long as this atom instance is alive.
+    </p>
+  </Item>
+  <Item name="Returns">
+    <p>
+      The memoized callback function. The returned reference will only change if
+      any deps change.
+    </p>
+  </Item>
+</Legend>}
+
+## See Also
+
+- [`injectMemo()`](injectMemo)

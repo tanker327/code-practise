@@ -1,0 +1,22 @@
+---
+id: Settable
+title: Settable
+---
+
+The value passed to [`store.setState()`](../classes/Store#setstate) and [`store.setStateDeep()`](../classes/Store#setstatedeep), thus also the value passed to [`instance.setState()`](../classes/AtomInstance#setstate) and [`instance.setStateDeep()`](../classes/AtomInstance#setstatedeep).
+
+## Definition
+
+```ts
+type Settable<State = any> = ((state: State) => State) | State
+```
+
+Can be either the state straight-up or a function that receives the current state and returns the new state
+
+```ts
+const store = createStore(null, 'initial state')
+
+store.setState('new state')
+store.setState(currentState => `${currentState} and then some`)
+store.getState() // 'new state and then some'
+```

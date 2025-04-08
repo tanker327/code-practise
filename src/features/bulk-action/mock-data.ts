@@ -8,7 +8,7 @@ export const mockStatusData: BulkActionResponseDataType = {
   "templateType": "editProposal/editMilestone/editTag/editTaxonomy",
   "entityType": "PROPOSAL/MILESTONE",
   "requestPayload": "",
-  "status": "Failed",
+  "status": "Success",
   "startTime": "2024-11-20T22:58:17.000Z",
   "requestedBy": "",
   "requestedByRoles": "",

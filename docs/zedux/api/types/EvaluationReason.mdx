@@ -1,0 +1,118 @@
+---
+id: EvaluationReason
+title: EvaluationReason
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+Every update that causes an atom instance to reevaluate produces an EvaluationReason. You can get the list of reasons that caused an atom instance to reevaluate using [`injectWhy()`](../injectors/injectWhy). To get the reason list for selectors, use [`ecosystem.why()`](../classes/Ecosystem#why).
+
+## Definition
+
+```ts
+interface EvaluationReason<State = any> {
+  action?: ActionChain
+  newState?: State
+  oldState?: State
+  operation: string // e.g. a function like "injectAtomValue"
+  sourceType: EvaluationSourceType
+  sourceId?: string // e.g. an instance id like "todos" or "userData-[1]"
+  reasons?: EvaluationReason[]
+  type: EvaluationType
+}
+
+type EvaluationSourceType =
+  | 'Atom'
+  | 'AtomSelector'
+  | 'External'
+  | 'Injector'
+  | 'Store'
+
+type EvaluationType =
+  | 'cache invalidated'
+  | 'node destroyed'
+  | 'promise changed'
+  | 'state changed'
+```
+
+{<Legend>
+  <Item name="action">
+    <p>
+      If this EvaluationReason was a store's state updating, then this will be a
+      reference to the <Link to="ActionChain">ActionChain object</Link> that
+      caused the update. Otherwise, will be undefined.
+    </p>
+  </Item>
+  <Item name="newState">
+    <p>
+      The source's new state after updating. If the source is a store, this is
+      the new state of the store. If the source is an atom instance, it's the
+      new state of the atom instance's store. If the source is external (e.g. an
+      invalidation from a React component), this will be undefined.
+    </p>
+  </Item>
+  <Item name="oldState">
+    <p>
+      The source's state before updating. If the source is a store, this is the
+      previous state of the store. If the source is an atom instance, it's the
+      old state of the atom instance's store. If the source is external, this
+      will be undefined.
+    </p>
+  </Item>
+  <Item name="operation">
+    <p>
+      The name of the function triggering this evaluation. If the source is an
+      atom, injector, or store, <code>operation</code> will be the function name
+      you called to create the{' '}
+      <Link to="../glossary#dynamic-graph-dependency">
+        dynamic graph dependency
+      </Link>{' '}
+      - e.g. an injector name like "injectStore" or "injectAtomValue". If the
+      source is external, the operation name will be "invalidate".
+    </p>
+  </Item>
+  <Item name="sourceId">
+    <p>
+      If the source dependency was another atom instance or selector, this will
+      be that instance's or selector's id. Otherwise, this will be undefined.
+    </p>
+  </Item>
+  <Item name="sourceType">
+    <p>
+      What type of thing changed. Could be a store subscribed to via{' '}
+      <Link to="../injectors/injectStore">
+        <code>injectStore()</code>
+      </Link>
+      , an injected atom instance, or an <Link to="../classes/AtomInstance#invalidate">
+        <code>.invalidate()</code>
+      </Link> call from a dependent.
+    </p>
+    <p>See the "EvaluationSourceType" definition above.</p>
+  </Item>
+  <Item name="reasons">
+    <p>
+      An array of EvaluationReasons. If the source dependency itself was updated
+      in response to one of its dependencies updating, those EvaluationReasons
+      will be listed here.
+    </p>
+    <p>
+      This is recursive! With this, you can see an update that originated many
+      layers deep in the dependency tree and ultimately led to this atom
+      reevaluating. If the source dependency was the instigator of the change,
+      then this will be undefined.
+    </p>
+  </Item>
+  <Item name="type">
+    <p>
+      The type of update that occurred. Could be a store's state changing, an
+      atom instance being destroyed, an atom instance's promise changing, or an
+      invalidation triggered externally.
+    </p>
+    <p>See the "EvaluationType" definition above.</p>
+  </Item>
+</Legend>}
+
+## See Also
+
+- [`injectWhy()`](../injectors/injectWhy)
+- [`ecosystem.why()`](../classes/Ecosystem#why)

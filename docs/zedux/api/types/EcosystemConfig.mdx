@@ -1,0 +1,128 @@
+---
+id: EcosystemConfig
+title: EcosystemConfig
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+The config object passed to [the `createEcosystem()` factory](../factories/createEcosystem).
+
+## Definition
+
+```ts
+interface EcosystemConfig<
+  Context extends Record<string, any> | undefined = any
+> {
+  atomDefaults?: {
+    ttl?: number
+  }
+  complexParams?: boolean
+  context?: Context
+  destroyOnUnmount?: boolean
+  flags?: string[]
+  id?: string
+  onReady?: (
+    ecosystem: Ecosystem<Context>,
+    prevContext?: Context
+  ) => MaybeCleanup
+  overrides?: AnyAtomTemplate[]
+  ssr?: boolean
+}
+```
+
+All fields are optional. It is recommended to at least pass an id.
+
+{<Legend>
+  <Item name="complexParams">
+    <p>
+      A boolean. Default <code>false</code>. Whether{' '}
+      <Link to="../../advanced/complex-params">
+        "complex" atom and selector params
+      </Link>{' '}
+      should be allowed.
+    </p>
+  </Item>
+  <Item name="context">
+    <p>
+      An object. The initial{' '}
+      <Link to="../classes/Ecosystem#context">context</Link> for the ecosystem.
+    </p>
+  </Item>
+  <Item name="atomDefaults">
+    <p>
+      An object. This object currently accepts a single optional property -{' '}
+      <code>ttl</code>. If specified, this <code>ttl</code> will be used as the{' '}
+      <Link to="../classes/AtomTemplate#ttl">
+        <code>ttl</code>
+      </Link>{' '}
+      for all atoms in the ecosystem that don't specify one.
+    </p>
+  </Item>
+  <Item name="destroyOnUnmount">
+    <p>
+      A boolean. Defaults to <code>false</code> for ecosystems created via{' '}
+      <Link to="../factories/createEcosystem">
+        <code>createEcosystem()</code>
+      </Link>
+      . Defaults to <code>true</code> for ecosystems created automatically by rendering
+      an <Link to="../components/EcosystemProvider">
+        <code>&lt;EcosystemProvider&gt;</code>
+      </Link>.
+    </p>
+    <p>
+      Whether the ecosystem should destroy itself when its last{' '}
+      <code>&lt;EcosystemProvider&gt;</code> unmounts. Can be useful for
+      testing.
+    </p>
+  </Item>
+  <Item name="flags">
+    <p>
+      An array of strings. Will be set as the{' '}
+      <Link to="../classes/Ecosystem#flags">ecosystem's flags</Link>.
+    </p>
+  </Item>
+  <Item name="id">
+    <p>
+      A string. Identifies the ecosystem in the{' '}
+      <Link to="../utils/internal-utils#store">
+        <code>internal store</code>
+      </Link>{' '}
+      and in dev tools. If no id is specified when creating the ecosystem, one
+      will be generated randomly.
+    </p>
+  </Item>
+  <Item name="onReady">
+    <p>
+      A function. Will be set as the ecosystem's{' '}
+      <Link to="../classes/Ecosystem#onready">onReady</Link> function.
+    </p>
+  </Item>
+  <Item name="overrides">
+    <p>
+      An array of <Link to="../classes/AtomTemplate">atom templates</Link>. Will
+      be mapped into the{' '}
+      <Link to="../classes/Ecosystem#overrides">ecosystem's overrides</Link>{' '}
+      object.
+    </p>
+    <p>
+      Used for{' '}
+      <Link to="../../walkthrough/overrides">Dependency Injection</Link>.
+    </p>
+  </Item>
+  <Item name="ssr">
+    <p>
+      A boolean. Default <code>false</code>. Turns on SSR mode for the entire
+      ecosystem.
+    </p>
+    <p>
+      See <Link to="../../advanced/ssr">the SSR guide</Link>.
+    </p>
+  </Item>
+</Legend>}
+
+## See Also
+
+- [The Ecosystems walkthrough](../../walkthrough/ecosystems)
+- [The `Ecosystem` class](../classes/Ecosystem)
+- [`createEcosystem()`](../factories/createEcosystem)
+- [`<EcosystemProvider>`](../components/EcosystemProvider)

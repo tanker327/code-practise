@@ -1,0 +1,284 @@
+---
+id: Store
+title: Store
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+The [`createStore()` factory](../factories/createStore) returns an instance of this class. The store is the basic unit of state management.
+
+In Zedux, unlike Redux, the store is a class. A Zedux app will typically create many stores. It's therefore necessary that stores be as light as possible. With classes, we can take advantage of prototype method reuse, making each store use less memory.
+
+All atom state is held in stores. Every atom instance has a store, whether you create one yourself using [`injectStore()`](../injectors/injectStore) or let Zedux create one for you.
+
+## Creation
+
+Create using `createStore()`.
+
+```ts
+import { createStore } from '@zedux/react'
+
+const store = createStore()
+const withReducer = createStore(rootReducer)
+const withInitialState = createStore(null, initialState)
+const withBoth = createStore(rootReducer, initialState)
+const splittingReducers = createStore({
+  a: reducerA,
+  b: reducerB,
+})
+const childStores = createStore({
+  a: storeA,
+  b: storeB,
+})
+const mixed = createStore({
+  a: reducerA,
+  b: storeB,
+})
+```
+
+### In Atoms
+
+In an atom evaluator, stores should almost always be stable references. The easiest way to ensure this is by using [`injectStore()`](../injectors/injectStore).
+
+```ts
+import { atom, injectStore } from '@zedux/react'
+
+const testAtom = atom('test', () => {
+  const store = injectStore(initialState)
+
+  return store // remember to return the store
+})
+```
+
+You'll often deal with multiple stores in a single atom. Take advantage of inline state updates and store composition:
+
+```ts
+const testAtom = atom('test', () => {
+  const storeFromInjector = injectCustomThing()
+  const localStore = injectStore()
+
+  // state can be set inline during atom evaluation:
+  storeFromInjector.setState(newState)
+
+  // compose stores together to get a single store you can return:
+  const combinedStore = injectStore(() =>
+    createStore({
+      otherState: storeFromInjector,
+      state: localStore,
+    })
+  )
+
+  return combinedStore
+})
+```
+
+## Extending
+
+There are many aspects of a store's behavior you can overwrite when extending this class. This is an extremely advanced feature. We're not documenting it yet as the internals of this class may change.
+
+## Methods
+
+Stores expose the following methods:
+
+{<Legend>
+  <Item name="actionStream">
+    <p>
+      Returns an "observable"-like object. This object has a single{' '}
+      <code>.subscribe()</code> function that you can call directly:
+    </p>
+    <Ts>{`store.actionStream().subscribe(action => ...)
+// or, passing an object:
+store.actionStream().subscribe({
+  complete: () => ..., // (complete is never called - stores are non-finite)
+  next: action => ...,
+  error: err => ...,
+})`}</Ts>
+    <p>
+      Or you can pass the object directly to RxJS's <code>from()</code>:
+    </p>
+    <Ts>{`from(store.actionStream()).pipe(take(2)).subscribe(...)`}</Ts>
+    <p>
+      The stream will emit an <Link to="../types/ActionChain">ActionChain</Link>{' '}
+      object every time an action is dispatched to the store.
+    </p>
+  </Item>
+  <Item name="dispatch">
+    <p>
+      Dispatches an <Link to="../types/Action">action</Link> to the store. The
+      action will be passed to the store's reducers (if any) and thence to any
+      child stores.
+    </p>
+    <p>
+      After the reducer layer has been given an opportunity to produce a new
+      value, all{' '}
+      <Link to="../types/Subscriber#effects">effects subscribers</Link>{' '}
+      (including action streams) will be notified of the action. If the dispatch
+      resulted in a state change, all normal subscribers will also be notified.
+    </p>
+    <p>
+      Also accepts <Link to="../types/ActionChain">ActionChain objects</Link>.
+      These can drastically alter the behavior of the dispatch. This is how
+      Zedux's store composition model works and is very low-level.
+    </p>
+    <p>
+      Returns the new state or the existing state if the reducer layer didn't
+      produce a different value. Note that unlike Redux, dispatches in Zedux are
+      always synchronous - the state will always be updated by the time the
+      dispatch returns.
+    </p>
+  </Item>
+  <Item name="getState">
+    <p>Returns the current state of the store.</p>
+  </Item>
+  <Item name="setState">
+    <p>
+      Overwrites the current state of the store with the passed state. Similar
+      to React's <code>useState()</code> state setters.
+    </p>
+    <p>
+      Does nothing if the passed state is exactly the same (===) as the current
+      state. Even effects subscribers will not be notified.
+    </p>
+    <p>
+      Generates and effectively dispatches a special{' '}
+      <Link to="../utils/zeduxTypes#hydrate">hydrate</Link> pseudo-action:
+    </p>
+    <Ts>{`// calling:
+store.setState('myState')
+// is exactly the same as calling:
+store.dispatch({ type: zeduxTypes.hydrate, payload: 'myState' })`}</Ts>
+    <p>
+      This is important for store composition and time travel, but you won't
+      usually need to worry about it.
+    </p>
+    <p>Signature:</p>
+    <Ts>{`setState = (stateOrFactory, meta?) => newState`}</Ts>
+    {<Legend>
+      <Item name="stateOrFactory">
+        <p>
+          Required. Either the new state or a function that accepts the current
+          state and returns the new state. This must be done immutably - e.g. by
+          spreading nested objects/arrays manually:
+        </p>
+        <Ts>{`store.setState(state => ({
+  ...state,
+  myField: {
+    ...state.myField,
+    nestedField: 'myVal',
+  }
+}))`}</Ts>
+      </Item>
+      <Item name="meta">
+        <p>
+          Optional. Can be anything. This will be set as the <code>meta</code>{' '}
+          property of the generated action.
+        </p>
+        <p>
+          Can be set to the special{' '}
+          <Link to="../utils/zeduxTypes#ignore">ignore</Link> meta type to
+          prevent the atom instance that created this store from reevaluating.
+        </p>
+      </Item>
+      <Item name="Returns">
+        The new state after notifying all subscribers of the state change.
+        Returns the existing state if there was no state change.
+      </Item>
+    </Legend>}
+  </Item>
+  <Item name="setStateDeep">
+    <p>
+      Deeply merges the passed state into the current state. Only works with JS
+      objects.
+    </p>
+    <p>
+      IMPORTANT! This cannot be used to delete keys. Use{' '}
+      <code>.setState()</code> for that. <code>.setStateDeep()</code> is only
+      for recursively adding/updating keys.
+    </p>
+    <p>
+      Generates and effectively dispatches a special{' '}
+      <Link to="../utils/zeduxTypes#merge">merge</Link> pseudo-action:
+    </p>
+    <Ts>{`// calling:
+store.setStateDeep({ myField: 'myVal' })
+// is exactly the same as calling:
+store.dispatch({
+  type: zeduxTypes.merge,
+  payload: { myField: 'myVal' }
+})`}</Ts>
+    <p>
+      This is important for store composition and time travel, but you won't
+      usually need to worry about it.
+    </p>
+    <p>Signature:</p>
+    <Ts>{`setStateDeep = (partialStateOrFactory, meta?) => newState`}</Ts>
+    {<Legend>
+      <Item name="partialStateOrFactory">
+        Required. Either a recursive partial state object or a function that
+        returns one.
+      </Item>
+      <Item name="meta">
+        <p>
+          Optional. Can be anything. This will be set as the <code>meta</code>{' '}
+          property of the generated action.
+        </p>
+        <p>
+          Can be set to the special{' '}
+          <Link to="../utils/zeduxTypes#ignore">ignore</Link> meta type to
+          prevent the atom instance that created this store from reevaluating.
+        </p>
+      </Item>
+    </Legend>}
+  </Item>
+  <Item name="subscribe">
+    <p>
+      Registers listeners that will be notified of certain events/updates in the
+      store.
+    </p>
+    <p>
+      Accepts a <Link to="../types/Subscriber">subscriber</Link> function or
+      object.
+    </p>
+    <p>
+      Returns a <Link to="../types/Subscription">subscription</Link> object.
+    </p>
+  </Item>
+  <Item name="use">
+    <p>
+      The composition wizard of the Zedux realm. <code>.use()</code> modifies
+      the structure of the store on the fly. Use it to add or remove child
+      stores and reducers.
+    </p>
+    <p>
+      Accepts a{' '}
+      <Link to="../types/HierarchyDescriptor">HierarchyDescriptor</Link>, just
+      like the first argument to{' '}
+      <Link to="../factories/createStore#initialhierarchy">
+        <code>createStore()</code>
+      </Link>
+      .
+    </p>
+    <Ts>{`const myStore = createStore(rootReducer) // the initial "hierarchy"
+myStore.use(anotherStore) // completely replace the store's state
+myStore.use({
+  // completely replace the store's state
+  a: storeA,
+  b: storeB,
+})
+myStore.use({
+  // merge this hierarchy into the previous hierarchy
+  b: null, // remove "b" from the store
+  c: {
+    // add "c" and its nested nodes to the store
+    d: reducerD,
+  },
+})
+myStore.use(null) // wipe everything`}</Ts>
+  </Item>
+</Legend>}
+
+## See Also
+
+- [The Stores walkthrough](../../walkthrough/stores)
+- [The `HierarchyDescriptor` type](../types/HierarchyDescriptor)
+- [`createStore()`](../factories/createStore)

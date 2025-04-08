@@ -1,0 +1,140 @@
+---
+id: useAtomContext
+title: useAtomContext
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+```ts
+import { useAtomContext } from '@zedux/react'
+```
+
+A React hook that accepts an [atom template](../classes/AtomTemplate) and returns an [instance](../classes/AtomInstance) of that atom template that has been provided over React context via [`<AtomProvider>`](../components/AtomProvider).
+
+If no instance has been provided, this hook will return undefined. Pass default params as the second argument to tell Zedux to create an atom instance if one wasn't provided. Pass `true` as the second argument to tell Zedux to throw an error if you forgot to provide an instance.
+
+This hook will not register a graph dependency of any kind on the provided instance. You can create a graph dependency by passing the consumed atom instance to various hooks:
+
+- To register a [dynamic dependency](../glossary#dynamic-graph-dependency) (causing this component to rerender when the atom instance's state updates), pass the consumed atom instance to [`useAtomValue()`](useAtomValue), [`useAtomState()`](useAtomState), or [`useAtomSelector()`](useAtomSelector).
+
+- To register a [static dependency](../glossary#static-graph-dependency), pass the consumed atom instance to [`useAtomInstance()`](useAtomInstance). You typically won't need to do this as the providing component usually registers its own dependency on the provided instance.
+
+:::note
+This is one of the few hooks that does not have an injector equivalent (there is no such thing as `injectAtomConsumer()`). This is because this hook's functionality is very specific to React. There is no equivalent in the atoms universe.
+:::
+
+## Example
+
+```tsx live ecosystemId=useAtomContext/example resultVar=Parent
+const secondsAtom = atom('seconds', () => {
+  const store = injectStore(0)
+
+  injectEffect(() => {
+    const intervalId = setInterval(() => store.setState(val => val + 1), 1000)
+
+    return () => clearInterval(intervalId)
+  }, [])
+
+  return store
+})
+
+function Child() {
+  const instance = useAtomContext(secondsAtom)
+  const state = useAtomValue(instance)
+
+  return <div>Child Seconds: {state}</div>
+}
+
+function Parent() {
+  const instance = useAtomInstance(secondsAtom)
+
+  return (
+    <AtomProvider instance={instance}>
+      <Child />
+    </AtomProvider>
+  )
+}
+```
+
+Miscellaneous:
+
+```ts
+const instance = useAtomContext(myAtom)
+
+const defaulted = useAtomContext(myAtom, ['param 1', 'param 2'])
+
+// if the atom doesn't take params, pass an empty array for the default params:
+const defaultedNoParams = useAtomContext(myAtom, [])
+
+// passing `true` makes Zedux throw an error if no instance was provided:
+const guaranteed = useAtomContext(myAtom, true)
+```
+
+## Signature
+
+<Tabs>
+  {tab1(`useAtomContext = (template, defaultParamsOrThrow?) => atomInstance`)}
+  {tab2(`declare const useAtomContext: {
+  <A extends AnyAtomTemplate>(template: A): AtomInstanceType<A> | undefined
+  <A extends AnyAtomTemplate>(
+    template: A,
+    defaultParams: AtomParamsType<A>
+  ): AtomInstanceType<A>
+  <A extends AnyAtomTemplate>(
+    template: A,
+    throwIfNotProvided: boolean
+  ): AtomInstanceType<A>
+}`)}
+</Tabs>
+
+{<Legend>
+  <Item name="template">
+    <p>
+      Required. An <Link to="../classes/AtomTemplate">atom template</Link>.
+    </p>
+  </Item>
+  <Item name="defaultParamsOrThrow">
+    <p>Optional. Can be either:</p>
+    <ul>
+      <li>An array containing valid params of the passed atom.</li>
+      <li>A boolean.</li>
+    </ul>
+    <p>
+      If an array (<code>defaultParams</code>) is passed,{' '}
+      <code>useAtomContext()</code> will use it to find or create an atom
+      instance if none was provided above the current component via an{' '}
+      <Link to="../components/AtomProvider">
+        <code>&lt;AtomProvider&gt;</code>
+      </Link>
+      . If the atom doesn't take params, pass an empty array.
+    </p>
+    <p>
+      If <code>true</code> is passed, <code>useAtomContext()</code> will throw
+      an error if the current component is rendered outside a matching{' '}
+      <code>&lt;AtomProvider&gt;</code>. This is the recommended overload.
+      Example:
+    </p>
+    <Ts>{`const instance = useAtomContext(myAtom, true)`}</Ts>
+  </Item>
+  <Item name="Returns">
+    <p>
+      An <Link to="../classes/AtomInstance">atom instance</Link> of the passed
+      atom template.
+    </p>
+    <p>
+      If no instance was provided and default params were passed, returns the
+      instance matching the given params. If the instance doesn't exist yet,{' '}
+      <code>useAtomContext()</code> uses the passed template and default params
+      to create it.
+    </p>
+    <p>
+      If no instance was provided and <code>true</code> is passed as the 2nd
+      parameter, this hook throws an error.
+    </p>
+  </Item>
+</Legend>}
+
+## See Also
+
+- [The React Context walkthrough](../../walkthrough/react-context)
+- [`<AtomProvider>`](../components/AtomProvider)

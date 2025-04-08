@@ -1,0 +1,253 @@
+---
+id: atom-instances
+title: Atom Instances
+---
+
+Atom templates are like classes. Whenever an atom template is used, Zedux creates an "instance" of that atom and caches it. So what does an atom instance look like?
+
+:::tip you will learn:
+
+- How atom params work
+- How to get an atom instance itself
+- Some properties and methods of atom instances.
+
+:::
+
+## Atom Params
+
+When an atom state factory takes params, Zedux creates a different atom instance for every "unique" set of params you pass. So how does Zedux determine "uniqueness"?
+
+Zedux doesn't compare object references. Internally, Zedux turns all params into a single string. This "hashing" is deterministic. If you know React Query, this should all sound familiar 'cause that's where we got the idea. Check out [React Query's docs on this](https://react-query.tanstack.com/guides/query-keys#query-keys-are-hashed-deterministically).
+
+Let's look at some examples. Given this atom template:
+
+```ts
+const myParamsAtom = atom('myParams', (a: any, b: any) => {
+  ...
+})
+```
+
+The following params are considered the same - Zedux will translate them to the exact same atom instance:
+
+```ts
+useAtomState(myParamsAtom, [{ one, two }, three])
+useAtomState(myParamsAtom, [{ two, one }, three])
+```
+
+But the following params are all different (params order and array order matter):
+
+```ts
+useAtomState(myParamsAtom, [{ one, two }, three])
+useAtomState(myParamsAtom, [three, { one, two }])
+
+useAtomState(myParamsAtom, [[one, two], three])
+useAtomState(myParamsAtom, [[two, one], three])
+```
+
+## `useAtomInstance()`
+
+We saw this in the [quick start](quick-start), but quick recap:
+
+`useAtomInstance()` is a lower-level hook than `useAtomState()` that returns the entire atom instance. Importantly, unlike `useAtomState()`, it doesn't cause a rerender when the atom instance's state changes.
+
+```tsx live ecosystemId=atom-instances/useAtomInstance resultVar=App
+const counterAtom = atom('counter', 0)
+
+function Static() {
+  // useAtomInstance does _not_ trigger rerenders
+  const greetingInstance = useAtomInstance(counterAtom)
+
+  return (
+    <div>
+      <button onClick={() => greetingInstance.setState(state => state + 1)}>
+        Increment
+      </button>
+      <span> non-updating state: {greetingInstance.getState()}</span>
+    </div>
+  )
+}
+
+function Dynamic() {
+  // useAtomState triggers rerenders on state update
+  const [counter, setState] = useAtomState(counterAtom)
+
+  return (
+    <div>
+      <button onClick={() => setState(state => state + 1)}>Increment</button>
+      <span> state: {counter}</span>
+    </div>
+  )
+}
+
+function App() {
+  return (
+    <>
+      <Static />
+      <Dynamic />
+    </>
+  )
+}
+```
+
+Click the buttons a few times and you'll see the `Dynamic` component update while the `Static` component stays ... static, even though both buttons are doing exactly the same thing.
+
+This example is contrived - you shouldn't ever _read_ an atom's state during render like this (use `useAtomValue` for that). But one of the primary uses of `useAtomInstance` is to _set_ an atom's state without subscribing to state updates.
+
+```ts
+// subscribes:
+const [, setState] = useAtomState(myAtom)
+...
+setState(newState)
+
+// doesn't subscribe:
+const instance = useAtomInstance(myAtom)
+...
+instance.setState(newState)
+```
+
+Another primary use case is to get a reference to the atom instance that can be read synchronously anywhere. This can be necessary sometimes to prevent reading stale closed-over values in React callbacks. See [this discussion](https://github.com/Omnistac/zedux/discussions/189).
+
+:::tip
+
+Use `useAtomInstance` instead of `useAtomValue` to:
+
+- prevent rerenders
+- set state without reading
+- read the atom's current state in callbacks without waiting for React to rerender
+
+Use `useAtomValue` (or `useAtomState`) instead to:
+
+- trigger rerenders
+- update displayed UI values
+
+:::
+
+:::tip
+You'll find that Zedux gives you a _lot_ of control over React rerenders. This is one of the primary reasons we created it.
+:::
+
+Alright, we did a few things with the atom instance that we haven't seen before. Let's look at those now.
+
+## Atom Instances
+
+Every [atom instance](../api/classes/AtomInstance) is just an object with several useful properties and methods, including:
+
+### `params`
+
+An array of the params of this atom instance, in the order passed
+
+```ts
+const blogPostCommentAtom = atom(
+  'blogPostComment',
+  (blogPostId: string, commentId: string) => {
+    ...
+  }
+)
+
+// in a React component:
+const instance = useAtomInstance(blogPostCommentAtom, [1, 2])
+const [blogPostId, commentId] = instance.params // [1, 2]
+```
+
+### `status`
+
+A string. Every atom instance goes through a lifecycle:
+
+![Initializing -> Active \<-> Stale -> Destroyed](/img/diagrams/status-machine.png)
+
+`instance.status` should typically be `'Active'` on instances you use. We'll talk more about these in [the destruction walkthrough](destruction).
+
+### `store`
+
+A reference to the atom instance's store. Every atom instance has one. If the atom's state factory returns a store, this will be a reference to that store.
+
+```tsx
+const storeAtom = atom('store', () => {
+  const store = injectStore('initial state')
+
+  return store
+})
+
+function MyComponent() {
+  const instance = useAtomInstance(storeAtom)
+  instance.store // <- this is the exact same store that we returned
+}
+```
+
+Quick recap of zero-config store basics:
+
+```ts
+store.getState() // returns the current state of the store
+store.setState('new state') // overwrites the store's state
+
+// recursively merge state into existing state:
+store.setStateDeep({ deeply: { merge: 'this state' } })
+
+// function overloads - set new state based on current state
+store.setState(state => state + 1)
+store.setStateDeep(state => ({ someKey: state.someKey + 1 }))
+```
+
+### `template`
+
+A reference to the atom template that this atom instance is an instance of.
+
+```ts
+const exampleAtom = atom('example', () => 'my state')
+...
+const instance = useAtomInstance(exampleAtom)
+instance.template === exampleAtom // true
+```
+
+### `getState()`
+
+An alias for [`instance.store.getState()`](../api/classes/Store#getstate). Returns the current state of the atom instance's store:
+
+```ts
+const instance = getInstance(myAtom)
+instance.getState() === instance.store.getState()
+```
+
+### `setState()`
+
+The most common way to set the state of an atom instance's store. An alias for [`instance.store.setState()`](../api/classes/Store#setstate). Function overload supported.
+
+```ts
+const instance = getInstance(myAtom)
+instance.setState(newState)
+instance.setState(currentState => newState)
+```
+
+:::tip
+The `setState` function returned by [`useAtomState()`](../api/hooks/useAtomState) and [`injectAtomState()`](../api/injectors/injectAtomState) is a wrapper around this function.
+:::
+
+### `invalidate()`
+
+Call this to force the atom instance to reevaluate. Typically you should avoid impure or mutation-oriented patterns that require you to manually invalidate atom instances. But there are some useful invalidation patterns that we'll look at in [the resets walkthrough](resets).
+
+```tsx live ecosystemId=atom-instances/invalidate resultVar=RandomNum
+const randomNumAtom = atom('randomNum', () => Math.floor(Math.random() * 100))
+
+function RandomNum() {
+  const instance = useAtomInstance(randomNumAtom)
+  const value = useAtomValue(randomNumAtom)
+
+  return (
+    <>
+      <div>Random Number: {value}</div>
+      <button onClick={() => instance.invalidate()}>Re-roll</button>
+    </>
+  )
+}
+```
+
+## Recap
+
+- Atom params are hashed deterministically.
+- `useAtomInstance()` returns an atom instance without subscribing to state updates.
+- Atom instances have a lot of features. We'll cover more in the rest of this walkthrough.
+
+## Next Steps
+
+Atom instances have more features such as exporting functions and kicking off React suspense. To unlock these powers, you need [Atom APIs](atom-apis).

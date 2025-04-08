@@ -1,0 +1,457 @@
+---
+id: stores
+title: Stores
+---
+
+The store is the heart of Zedux. Zedux uses a unique and unprecedented composable store model. These stores are light-weight, powerful, and fast.
+
+:::tip you will learn:
+
+- How to configure stores with a reducer hierarchy
+- How to "split" reducers
+- The different types of store subscribers
+- More about store composition and its applications
+- How to set state without triggering state update loops
+
+:::
+
+## Zero Config
+
+The Zedux store is opinionated but configurable. Config is optional. This means you don't have to set up a reducer hierarchy with action creators for every store. In fact, you may never use configured stores; zero config stores are by far the most common in Zedux due to their simplicity.
+
+```ts
+import { createStore } from '@zedux/react'
+
+const easySauceStore = createStore()
+```
+
+That's it! Updating state is usually done with `.setState()`, which works like React's state setters:
+
+```ts
+easySauceStore.setState(true) // set state straight-up
+easySauceStore.setState(currentState => !currentState) // function overload
+
+easySauceStore.getState() // false
+```
+
+With zero config stores, you can also use `.setStateDeep()` to recursively merge new state into existing state:
+
+```ts
+const nestedStore = createStore()
+nestedStore.setState({ a: { b: 'c' } })
+
+// no need for object spreading!
+// highlight-next-line
+nestedStore.setStateDeep({ a: { d: 'e' } })
+nestedStore.getState() // { a: { b: 'c', d: 'e' } }
+
+// function overload:
+// highlight-next-line
+nestedStore.setStateDeep(state => ({ a: { b: state.a.b + 'f' } }))
+nestedStore.getState() // { a: { b: 'cf', d: 'e' } }
+```
+
+:::warning
+`.setStateDeep()` can only be used to update state. It can never be used to delete keys! Use `.setState()` instead when deletion is needed.
+
+This is the number one cause of bugs in Zedux apps. Don't forget!
+:::
+
+It may seem that you lose out on unidirectional data flow and predictable, reproducible state updates with the zero config approach. You actually don't lose anything! We'll learn all about it in [the time travel guide](../advanced/time-travel).
+
+## Hydration
+
+`createStore()` takes an optional second argument - `initialState`:
+
+```ts
+const store = createStore(null, 'initial state')
+```
+
+For zero config stores, pass `null` as the first argument (we'll look at this first argument next). You can also hydrate a store's state with `.setState()`:
+
+```ts
+store.setState('initial state')
+```
+
+## Reducer Hierarchy
+
+Zedux stores can be configured with Redux-style reducer hierarchies. Simply pass your root reducer as the first argument to `createStore()`.
+
+Of course, Zedux also provides high-level methods for action and reducer creation:
+
+```ts
+import { actionFactory, createReducer, createStore } from '@zedux/react'
+
+const addTodo = actionFactory<Todo>('addTodo')
+const removeTodo = actionFactory<number>('removeTodo')
+
+const reducer = createReducer([])
+  .reduce(addTodo, (state, todo) => [...state, todo])
+  .reduce(removeTodo, (state, id) => state.filter(todo => todo.id !== id))
+
+const store = createStore(reducer)
+```
+
+:::note
+These high-level APIs are optional. You can of course use old-school switch statements and string constants if you wish, or any other means of creating reducers and actions.
+:::
+
+Updating the state of reducer-driven stores is usually done with `.dispatch()`. Just like Redux. Zedux actions must have a string `type` property and can have optional `payload` and `meta` properties.
+
+```ts
+// ... continuing the above example:
+store.dispatch(addTodo({ id: 1, isDone: false, text: 'Be More Awesome' }))
+
+store.getState()
+// [{ id: 1, isDone: false, text: 'Be More Awesome' }]
+```
+
+## Reducer Splitting
+
+The first argument to `createStore()` doesn't have to be a reducer. It can be a reducer, another store, or an object of reducers, stores, or objects of reducers, stores ... yeah, it's recursive. It's called a hierarchy descriptor.
+
+```ts
+type Branch<T = any> = {
+  [K in keyof T]: HierarchyDescriptor<T[K]>
+}
+
+type HierarchyDescriptor<State = any> =
+  | Branch<State>
+  | Store<State>
+  | Reducer<State>
+  | null
+```
+
+Passing an object ("branch") containing multiple reducers will automatically create a "branch" reducer. This is similar to Redux' [`combineReducers()`](https://redux.js.org/api/combinereducers).
+
+```ts
+const complexStore = createStore({
+  entities: {
+    posts: postsReducer,
+    users: usersReducer,
+  },
+  forms: formsStore,
+})
+
+complexStore.getState()
+/*
+{
+  entities: {
+    posts: <postsReducer initial state>,
+    users: <usersReducer initial state>
+  },
+  forms: <formsStore initial state>
+}
+*/
+```
+
+## Store Composition
+
+Zedux stores are composable. This means that a store can control part or all of the state of another store. This is an extremely unique and powerful feature that sets Zedux apart from other state management tools.
+
+What does store composition look like? Well quite simply:
+
+```ts
+import { createStore } from '@zedux/react'
+
+const childStore = createStore()
+const parentStore = createStore(childStore)
+```
+
+Easy, right? The `parentStore`'s state is now controlled by `childStore`.
+
+```ts
+childStore.setState('initial value')
+parentStore.getState() // 'initial value'
+
+parentStore.setState('a new value')
+childStore.getState() // 'a new value'
+```
+
+When we set the child store's state, that change propagated to the parent store.
+
+When we set the parent store's state, the parent store recognized that the relevant state was controlled by a child store and [delegated](../advanced/store-composition#delegation) that action to the child store. The child store then updated its state and propagated that change back up to the parent store.
+
+Now what can you do with that?
+
+```ts
+import { createStore } from '@zedux/react'
+
+const rootStore = createStore()
+const todosStore = createStore(null, [])
+const toNotDosStore = createStore(null, [])
+
+// The composition magic! Since the store is already created, use `.use()` to
+// update its hierarchy:
+rootStore.use({
+  todos: todosStore,
+  toNotDos: toNotDosStore,
+})
+
+toNotDos.setState(state => [...state, 'be layzee'])
+toNotDos.getState() // ['be layzee']
+rootStore.getState()
+// {
+//   todos: [],
+//   toNotDos: ['be layzee']
+// }
+```
+
+As you can imagine, this composable store model is extremely powerful. But before you start imagining Higher-Order Stores and code splitting heaven, remember that stores are actually a pretty low-level detail in Zedux. Prefer using atoms to organize your state and leave stores as implementation details of your atoms.
+
+The main purpose of store composition is for cases when you find yourself working with multiple stores in an atom. This can happen, for example, when using custom injectors that configure their own stores:
+
+```ts
+const storeA = injectMyConfiguredStore()
+const storeB = injectAnotherFancyStore()
+```
+
+Remember that you can only return a single store from a state factory. Composition allows you to combine all the stores into a single "parent" store:
+
+```ts
+// use the function overload of injectStore to create a composed store:
+const combinedStore = injectStore(() => createStore({ a: storeA, b: storeB }))
+
+// or, if any child store is an unstable reference, prefer `.use()`:
+const combinedStore = injectStore()
+combinedStore.use({ a: storeA, b: storeB })
+```
+
+Composition is powerful. There's a lot of potential for many more advanced patterns with store composition. In general though, you shouldn't need much more than what we did in these examples. You can check out the [store composition guide](../advanced/store-composition) to learn more.
+
+## Subscribing
+
+You can register several types of subscribers using `.subscribe()`.
+
+### Normal Subscribers
+
+These subscribers will be called on every state change.
+
+```ts
+const subscription = myStore.subscribe((newState, oldState) => {
+  console.log('store went from', oldState, 'to', newState)
+})
+```
+
+Normal subscribers receive the new state, the old state, and the action responsible for the update as arguments.
+
+The returned subscription object has a single property - `unsubscribe()`. Be sure to call this in `useEffect()` and `injectEffect()` cleanup:
+
+```ts
+useEffect(() => {
+  const subscription = myStore.subscribe(mySubscriber)
+
+  // highlight-next-line
+  return () => subscription.unsubscribe()
+}, [myStore])
+```
+
+### Error Subscribers
+
+These subscribers will be called if a dispatched action ever raises an error.
+
+```ts
+myStore.subscribe({
+  error: err => console.log('caught error!', err),
+})
+
+myStore.setState(() => {
+  throw 'muahahahaha'
+})
+```
+
+### Effects Subscribers
+
+These effects subscribers are meant to kick off side effects, including logging or running observables, generators, or other async flows.
+
+```ts
+const subscription = myStore.subscribe({
+  effects: ({ action, newState, oldState }) => {
+    console.log('state changed', { action, newState, oldState })
+  },
+})
+```
+
+:::tip unlimited power!!!
+Effects subscribers receive all the info needed to implement time travel for the store. This includes all info needed to undo and replicate all state changes in all child stores 😮. More on this in [the time travel walkthrough](../advanced/time-travel).
+:::
+
+These subscribers receive a special ["StoreEffect" object](../api/types/StoreEffect).
+
+There are 2 differences between effects subscribers and normal subscribers:
+
+- Effects subscribers are called every time an action is dispatched to the store, regardless of whether it triggered a state update.
+- Effects subscribers are called whether the dispatch completed successfully or threw an error.
+
+These distinctions give effects subscribers one special superpower in particular: They can be used to turn a store into an observable "message bus". We call these buses "action streams". That's right, Zedux stores can be simultaneously consumed as streams of actions and streams of state.
+
+### Combined Subscribers
+
+Any combination of these subscriber types can be added in one subscription:
+
+```ts
+myStore.subscribe({
+  effects: myEffectsSubscriber,
+  error: myErrorSubscriber,
+  next: myNextSubscriber, // a normal subscriber
+})
+```
+
+## Stores in Atoms
+
+The [atom state walkthrough](atom-state) showed how to inject stores in atoms to give them control over their own state. Now with a better understanding of stores, let's look at some more advanced patterns.
+
+### `injectStore`
+
+Everything in this walkthrough can be applied to stores created via this injector:
+
+#### Creating a reducer-driven store
+
+```ts
+const store = injectStore(() => createStore(rootReducer))
+```
+
+#### Composing stores
+
+```ts
+const storeA = injectStore('a')
+const storeB = injectStore('b')
+const store = injectStore(() => createStore({ a: storeA, b: storeB }))
+```
+
+:::tip
+Remember that if any of these stores are unstable references (for example, stores from injected atom instances), call `store.use()` inline instead of passing a function to `injectStore()`.
+:::
+
+#### Mixing stores and reducers
+
+```ts
+const store = injectStore(() =>
+  createStore({
+    a: myStore,
+    b: myReducer,
+  })
+)
+```
+
+### Setting state during evaluation
+
+You can set a store's state during atom evaluation.
+
+```ts
+const exampleAtom = atom('example', () => {
+  const store = injectStore('initial state')
+  const otherVal = injectAtomValue(otherAtom)
+
+  store.setState(deriveStuffFrom(otherVal)) // surely bad! .. Right?
+
+  return store
+})
+```
+
+But wouldn't this would cause a reevaluation loop??
+
+Turns out, this is fine! `injectStore()` detects if the store's state is updated while its atom instance is being evaluated and doesn't trigger a new evaluation. This means, however, that you may need to be conscious of when you set state:
+
+```ts
+const store = injectStore('initial state')
+
+// store's state hasn't been updated yet!
+injectEffect(someSideEffect, [store.getState()])
+
+// won't trigger the above effect (which is fine if that's what you want)
+store.setState(injectSomeDerivation())
+```
+
+Since `store.setState()` and `store.dispatch()` return the new state, you can pass that return value as a dep to `injectEffect` if needed:
+
+```ts
+const store = injectStore('initial state')
+const newstate = store.setState(injectSomeDerivation()) // update synchronously
+
+// pass this newState as the dep, instead of store.getState()
+injectEffect(someSideEffect, [newState])
+```
+
+Sometimes you will encounter an asynchronous evaluation loop, e.g. with `injectEffect`, where an effect needs to set the store's state but then the effect also reruns every time the state changes.
+
+Since Zedux can only skip updates that happen synchronously during evaluation, these situations require something extra. It may be possible in some cases to fix this by narrowing your effect's dependency so that only a piece of state causes the effect to rerun. Or you may be able to reorganize your state so that the effect updates a separate store than the one it depends on.
+
+If all else fails, you can pass [`zeduxTypes.ignore`](../api/utils/zeduxTypes#ignore) as an action's `meta` property to prevent Zedux from reevaluating this atom on this particular state change.
+
+```ts
+import { zeduxTypes } from '@zedux/react'
+
+myStore.dispatch({ type: 'my-action-type', meta: zeduxTypes.ignore })
+
+// metadata can be passed as the second argument to .setState():
+myStore.setState(newState, zeduxTypes.ignore)
+```
+
+:::info anti-pattern warning
+Use this _extremely_ sparingly (or just don't!). It can cause hard-to-find bugs.
+:::
+
+### Replacing Store References
+
+When composing multiple stores together inside a single atom, you may find situations where one or more of the child stores can change across evaluations. Consider:
+
+```ts
+const localStore = injectStore() // constant store reference
+const externalStore = injectAtomInstance(otherAtom).store // unstable!
+
+const store = injectStore(() =>
+  createStore({ local: localStore, external: externalStore })
+)
+```
+
+The store from `otherAtom` is technically an unstable reference because the `otherAtom` instance could be force-destroyed, which would trigger recreation with a completely different store reference. If that happens, the composed store will hold onto the old reference forever!
+
+The fix is very simple. Instead of using `createStore()` inside `injectStore()` for one-time configuration of the store, use `.use()` inline:
+
+```ts
+const store = injectStore()
+store.use({ local: localStore, external: externalStore })
+```
+
+Now if `externalStore`'s reference changes, this immediately updates its reference in the composed store and triggers a state update. And remember that state updates during evaluation don't trigger a reevaluation.
+
+`store.use()` is a no-op when nothing's changed.
+
+Another way to accomplish this is to only wrap the unstable store(s):
+
+```ts
+const wrappedExternalStore = injectStore()
+// highlight-next-line
+wrappedExternalStore.use(externalStore)
+
+const store = injectStore(() =>
+  createStore({ local: localStore, external: wrappedExternalStore })
+)
+```
+
+### Wrapper Atoms
+
+Sometimes you'll have an atom that doesn't hold any state itself, but may wrap some functionality around another atom. There is (currently) no rule that says an atom instance can't reuse another atom instance's store.
+
+However, as the above section just detailed, remember that such injected stores are technically unstable references. To make them stable, be sure to compose the store (essentially creating a local "copy" that Zedux keeps in sync with the original).
+
+```ts
+const wrappedInstance = injectAtomInstance(wrappedAtom)
+const store = injectStore()
+store.use(wrappedInstance.store)
+
+return api(store).setExports({ ... })
+```
+
+:::caution
+Try to avoid this pattern, as this bypasses Zedux's internal graph algorithm. For simple use cases, this should be fine. We are exploring a few potential solutions to allow composed stores from different atom instances to respect the atom graph when propagating updates.
+:::
+
+## Recap
+
+Stores are the backbone of Zedux. They're composable state containers that promote isolation and modularity, manage side effects, and work well in feature-based, micro-frontend, or otherwise code-split architectures. Learning to use stores effectively is the key to unlocking Zedux's power.
+
+## Next Steps
+
+Now that we know a bit about creating and subscribing to stores, we can learn how to hook into stores to run [side effects](side-effects).

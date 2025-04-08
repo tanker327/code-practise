@@ -1,0 +1,102 @@
+---
+id: injectMemo
+title: injectMemo
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+```ts
+import { injectMemo } from '@zedux/react'
+```
+
+An [injector](../glossary#injector) that memoizes a value. This is the injector equivalent of React's `useMemo()` hook. Like `useMemo()`, `injectMemo()` will return the same value on subsequent evaluations unless any items in the dependency array change.
+
+## Example
+
+```tsx live ecosystemId=injectMemo/example resultVar=Seconds
+const secondsAtom = atom('seconds', () => {
+  const store = injectStore(0)
+
+  injectEffect(() => {
+    const intervalId = setInterval(() => store.setState(val => val + 1), 1000)
+
+    return () => clearInterval(intervalId)
+  }, [])
+
+  return store
+})
+
+const everyFifthAtom = atom('everyFifth', () => {
+  const seconds = injectAtomValue(secondsAtom)
+
+  return injectMemo(() => seconds, [Math.floor(seconds / 5)])
+})
+
+function Seconds() {
+  const seconds = useAtomValue(secondsAtom)
+  const everyFifth = useAtomValue(everyFifthAtom)
+
+  return (
+    <>
+      <div>Seconds: {seconds}</div>
+      <div>Every Fifth Second: {everyFifth}</div>
+    </>
+  )
+}
+```
+
+Miscellaneous:
+
+```ts
+const constantVal = injectMemo(() => getExpensiveVal(), [])
+
+const changesWhenDepsChange = injectMemo(getExpensiveVal, [depA, depB])
+
+const changesEveryTimeButJustWhy = injectMemo(getExpensiveVal)
+```
+
+## Signature
+
+<Tabs>
+  {tab1(`injectMemo = (valueFactory, deps?)`)}
+  {tab2(`declare const injectMemo: <Value = any>(
+  valueFactory: () => Value,
+  deps?: InjectorDeps
+) => Value`)}
+</Tabs>
+
+{<Legend>
+  <Item name="valueFactory">
+    <p>Required. A function that returns the value to memoize.</p>
+    <p>
+      This function is called on initial evaluation and again every time any
+      dependencies change on subsequent evaluations.
+    </p>
+  </Item>
+  <Item name="deps">
+    <p>
+      Optional (though you'll always want to pass it). An array containing
+      absolutely anything.
+    </p>
+    <p>
+      If any items in this array change on a subsequent evaluation, the
+      previously memoized value will be discarded and the{' '}
+      <code>valueFactory</code> will be called again to produce a new value.
+    </p>
+    <p>
+      Pass an empty array to prevent the value from ever changing, as long as
+      this atom instance is alive.
+    </p>
+  </Item>
+  <Item name="Returns">
+    <p>
+      The memoized value returned from the <code>valueFactory</code>.
+    </p>
+  </Item>
+</Legend>}
+
+## See Also
+
+- [React's `useMemo()` reference](https://reactjs.org/docs/hooks-reference.html#usememo)
+- [`injectCallback()`](injectCallback)
+- [`injectPromise()`](injectPromise)

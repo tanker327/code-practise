@@ -1,0 +1,102 @@
+---
+id: EcosystemProvider
+title: EcosystemProvider
+---
+
+import { Legend, Item, Link, Tabs, Ts, tab1, tab2 } from '@site/src/all'
+
+```ts
+import { EcosystemProvider } from '@zedux/react'
+```
+
+A component that provides an [ecosystem](../classes/Ecosystem) over React context. The provided ecosystem will take command of all atom usages in any child components.
+
+You can pass either an existing [ecosystem](../classes/Ecosystem) via the `ecosystem` prop or any number of [EcosystemConfig properties](../types/EcosystemConfig) via their respectively named props.
+
+When passing config properties, the EcosystemProvider will create an ecosystem for you. It is recommended to at least pass an id.
+
+## Examples
+
+Passing an ecosystem:
+
+```tsx
+import { EcosystemProvider, createEcosystem } from '@zedux/react'
+
+const rootEcosystem = createEcosystem({ id: 'root', overrides: [someAtom] })
+
+function App() {
+  return (
+    <EcosystemProvider ecosystem={rootEcosystem}>
+      <Routes />
+    </EcosystemProvider>
+  )
+}
+```
+
+Passing configuration:
+
+```tsx
+function App() {
+  return (
+    <EcosystemProvider id="root" overrides={[someAtom]}>
+      <Routes />
+    </EcosystemProvider>
+  )
+}
+```
+
+Consuming the ecosystem happens automatically every time you use any Zedux hooks in any child component.
+
+## Props
+
+You must pass either an `ecosystem` prop or any combination of the other props but not both. No props is also fine, but it's recommended to at least pass an `id`.
+
+{<Legend>
+  <Item name="children">
+    <p>
+      Pass a single ReactNode child. To pass multiple components, wrap them in a
+      React Fragment.
+    </p>
+  </Item>
+  <Item name="ecosystem">
+    <p>
+      An ecosystem created via{' '}
+      <Link to="../factories/createEcosystem">
+        <code>createEcosystem()</code>
+      </Link>
+      .
+    </p>
+    <p>
+      Passing this gives you the most control over the ecosystem, at the cost of
+      being a little lower-level.
+    </p>
+    <p>
+      Make sure this ecosystem reference is stable. Changing the reference is
+      supported, but is almost never what you want as it will recreate the
+      entire atom instance and selector cache for all atom usages below this
+      component.
+    </p>
+  </Item>
+  <Item name="...rest">
+    <p>
+      See <Link to="../types/EcosystemConfig">the EcosystemConfig type</Link>{' '}
+      for all the other props and their types. The EcosystemConfig key names
+      have a one-to-one mapping with props of this component.
+    </p>
+    <p>
+      If the <code>id</code> prop is changed, Zedux will completely destroy the
+      previous ecosystem and create a new one using the id and the current value
+      of all the other EcosystemConfig props. Changing any other props besides{' '}
+      <code>id</code> will have no effect.
+    </p>
+    <p>
+      Passing EcosystemConfig props instead of an <code>ecosystem</code> prop is
+      supported for convenience when working with very simple ecosystems. If you
+      need more power, pass an <code>ecosystem</code> and manage it yourself.
+    </p>
+  </Item>
+</Legend>}
+
+## See Also
+
+- [The Ecosystems walkthrough](../../walkthrough/ecosystems)

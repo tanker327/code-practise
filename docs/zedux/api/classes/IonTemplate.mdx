@@ -1,0 +1,44 @@
+---
+id: IonTemplate
+title: IonTemplate
+---
+
+Extends [AtomTemplate](AtomTemplate).
+
+Ions are a specialized atom type. They excel at selector-type operations. The only difference from normal atoms is that an ion's [state factory](../glossary#state-factory) receives an [AtomGetters object](../types/AtomGetters) as its first parameter. All other params work exactly the same as normal atom params.
+
+Unlike atoms, ions _must_ be given a state factory function. That's the whole point!
+
+## Creation
+
+Create ion templates using [the `ion()` factory](../factories/ion).
+
+```ts
+import { ion } from '@zedux/react'
+
+const selectorAtom = ion('selector', ({ get }) => get(otherAtom).someField)
+const derivedAtom = ion('derived', ({ get }) => deriveStuff(get(otherAtom)))
+
+const withParams = ion('withParams', ({ get }, one: string, two: number) => {
+  return `${one} ${two}`
+})
+
+const withInjectors = ion('withInjectors', ({ get }) => {
+  // any injector can be used in the "getter" function.
+  const val = injectMemo(() => getExpensiveVal(), [])
+
+  return val
+})
+
+const withConfig = ion('withConfig', stateFactory, {
+  flags: ['my-flag'],
+  ttl: 0,
+})
+```
+
+Ions expose no unique properties or methods besides those exposed by [AtomTemplate](AtomTemplate).
+
+## See Also
+
+- [the `AtomTemplate` class](AtomTemplate)
+- [the Selectors walkthrough](../../walkthrough/selectors)
