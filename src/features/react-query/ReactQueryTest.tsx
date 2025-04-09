@@ -1,33 +1,18 @@
 import React from 'react';
-
-import { useQuery } from '@tanstack/react-query';
-
-
-
-const loadData = async (id: string) => {
-  const response = await fetch(`https://jsonplaceholder.typicode.com/posts/${id}`);
-  if (!response.ok) {
-    throw new Error('Network response was not ok');
-  }
-  return response.json();
-}
+import { useTestRequest } from './useTestRequest';
 
 type ReactQueryTestProps = {
   isEnable: boolean;
 };
 
-
 const ReactQueryTest = ({ isEnable }: ReactQueryTestProps) => {
   const [isEnableState, setIsEnableState] = React.useState(false);
-  const [count, setCount] = React.useState(1);
+  const [count, setCount] = React.useState<number|null>(null);
   const handleClick = (i: number) => {
-    setCount(count + i);
+    setCount(count === null ? i : count + i);
   };
-  const { data, error, isLoading, isFetching } = useQuery({
-    queryKey: ['test', count],
-    queryFn: () => loadData(count.toString()),
-    enabled: isEnableState,
-  });
+  
+  const { data, error, isLoading, isFetching } = useTestRequest(count === null ? 0 : count, isEnableState);
 
   console.log(data, error, isLoading, isFetching);
 
